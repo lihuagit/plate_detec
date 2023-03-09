@@ -1,13 +1,17 @@
 #include "serial/malloc.h"	   
 
+// 来自根总的代码，这里只是做了一些修改
+// 因为源代码是应用于单片机，这里进行一些改动得以使用，原来的部分进行了注释
 #define uint8_t unsigned char
 //内存池(64字节对齐)
-uint8_t mem1base[MEM_MAX_SIZE] __attribute__((at(0x20010000)));
+// uint8_t mem1base[MEM_MAX_SIZE] __attribute__((at(0x20010000)));
+uint8_t mem1base[MEM_MAX_SIZE];
 
 //内存管理表
-uint32_t mem1mapbase[MEM_ALLOC_TABLE_SIZE] __attribute__((at(0x20010000 + MEM_MAX_SIZE)));
+// uint32_t mem1mapbase[MEM_ALLOC_TABLE_SIZE] __attribute__((at(0x20010000 + MEM_MAX_SIZE)));
+uint32_t mem1mapbase[MEM_ALLOC_TABLE_SIZE];
 
-//内存管理参数	   
+//内存管理参数
 const uint32_t memtblsize   = MEM_ALLOC_TABLE_SIZE;	    //内存表大小
 const uint32_t memblksize   = MEM_BLOCK_SIZE;           //内存分块大小
 const uint32_t memsize      = MEM_MAX_SIZE;             //内存总大小

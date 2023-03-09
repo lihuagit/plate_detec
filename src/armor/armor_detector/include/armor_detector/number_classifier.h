@@ -1,6 +1,6 @@
 /**
  * @file number_classifier.hpp
- * @brief 
+ * @brief 识别数字类，参考陈君的代码
  * @author lihuagit (3190995951@qq.com)
  * @version 1.0
  * @date 2023-02-04

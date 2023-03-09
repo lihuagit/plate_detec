@@ -6,7 +6,6 @@
  * @date 2023-02-04
  * 
  */
-
 #ifndef ARMOR_DETECTOR__DETECTOR_NODE_H
 #define ARMOR_DETECTOR__DETECTOR_NODE_H
 

@@ -26,6 +26,13 @@
 
 namespace armor_auto_aim
 {
+
+/**
+ * @brief Construct a new Number Classifier:: Number Classifier object
+ * @param model_path 模型路径
+ * @param label_path 模型label路径
+ * @param thre 置信度阈值
+ */
 NumberClassifier::NumberClassifier(
   const std::string & model_path, const std::string & label_path, const double thre)
 : threshold(thre)
@@ -39,6 +46,11 @@ NumberClassifier::NumberClassifier(
   }
 }
 
+/**
+ * @brief 从图像中提取数字区域，并进行透视变换
+ * @param src 源图像
+ * @param armors 装甲板数组
+ */
 void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & armors)
 {
   // Light length in image
@@ -81,6 +93,10 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
   }
 }
 
+/**
+ * @brief 对数字区域进行分类
+ * @param armors 装甲板数组，已经确定数字区域，并存在number_img
+ */
 void NumberClassifier::doClassify(std::vector<Armor> & armors)
 {
   for (auto & armor : armors) {
