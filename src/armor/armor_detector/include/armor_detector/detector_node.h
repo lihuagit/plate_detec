@@ -26,9 +26,11 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 // user
 #include "armor_detector/detector.h"
+#include "armor_detector/armor.h"
 #include "armor_detector/number_classifier.h"
 #include "armor_interfaces/msg/armors.hpp"
 
@@ -43,22 +45,14 @@ public:
 private:
   	std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
 
-	// Camera info subscription
-	rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr cam_info_sub_;
-
-	// Camera info
-	std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
-
-	// Camera center
-	cv::Point2f cam_center_;
-
-	// Image subscriptions transport type
+	// 图像订阅的传输类型
 	std::string transport_;
 	
-	// Detected armors publisher
+	// 装甲板publisher
 	armor_interfaces::msg::Armors armors_msg_;
 	rclcpp::Publisher<armor_interfaces::msg::Armors>::SharedPtr armors_pub_;
 	
+	// 监控参数的动态变化
 	bool active_;
 	std::shared_ptr<rclcpp::ParameterEventHandler> active_param_sub_;
 	std::shared_ptr<rclcpp::ParameterCallbackHandle> active_cb_handle_;

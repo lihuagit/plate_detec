@@ -9,9 +9,6 @@
 
 #include "armor_detector/detector.h"
 
-// opnecv
-#include <opencv2/opencv.hpp>
-
 namespace armor_auto_aim
 {
 Detector::Detector(

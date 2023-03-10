@@ -12,6 +12,7 @@
 // c++
 #include <cstddef>
 #include <iostream>
+#include <fstream>
 #include <map>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@
 
 // user
 #include "armor_detector/detector.h"
+#include "armor_detector/armor.h"
 
 namespace armor_auto_aim
 {

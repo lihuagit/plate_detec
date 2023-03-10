@@ -1,27 +1,11 @@
-// Copyright 2022 Chen Jun
-// Licensed under the MIT License.
-
-// c++
-#include <algorithm>
-#include <cstddef>
-#include <map>
-#include <string>
-#include <vector>
-#include <fstream>
-
-// OpenCV
-#include <opencv2/core.hpp>
-#include <opencv2/core/mat.hpp>
-#include <opencv2/core/types.hpp>
-#include <opencv2/dnn.hpp>
-#include <opencv2/dnn/all_layers.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/opencv.hpp>
-
-// user
-#include "armor_detector/armor.h"
+/**
+ * @file number_classifier.cpp
+ * @brief 数字分类器 -- 识别数字类，参考陈君的代码
+ * @author lihuagit (3190995951@qq.com)
+ * @version 1.0
+ * @date 2023-03-11
+ * 
+ */
 #include "armor_detector/number_classifier.h"
 
 namespace armor_auto_aim

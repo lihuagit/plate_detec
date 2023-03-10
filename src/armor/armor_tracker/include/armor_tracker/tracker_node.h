@@ -63,12 +63,6 @@ private:
     unordered_map<std::string, TrackerParams> trackers_map;    //预测器Map
     std::map<string,int> new_armors_cnt_map;    //装甲板计数map，记录新增装甲板数
 
-    // Camera info subscription
-    rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr cam_info_sub_;
-
-    // Camera info
-    std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
-
     // Camera center
     cv::Point2f cam_center_;
 

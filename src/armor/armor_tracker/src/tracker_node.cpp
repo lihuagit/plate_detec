@@ -19,16 +19,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 
     auto pkg_path = ament_index_cpp::get_package_share_directory("armor_tracker");
     coord_solver.loadParam(pkg_path+"/params/coord_param.yaml", "KE0200110076");
-
-    // Camera info subscription
-    cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-        "/camera_info", rclcpp::SensorDataQoS(),
-        [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info) {
-            cam_center_ = cv::Point2f(camera_info->k[2], camera_info->k[5]);
-            cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camera_info);
-            // pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
-            cam_info_sub_.reset();
-        });
+    
     target_info_pub_ = this->create_publisher<armor_interfaces::msg::TargetInfo>("/processor/target", rclcpp::SensorDataQoS());
     
     armors_sub_ = this->create_subscription<armor_interfaces::msg::Armors>(
@@ -37,7 +28,6 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 
 void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstSharedPtr armors_msg){
     RCLCPP_INFO(this->get_logger(), "recvice armors!");
-    RCLCPP_INFO(this->get_logger(), "armor_num = %c", armors_msg->armors[0].number);
 
     double time_now = 1.0 * armors_msg->header.stamp.nanosec + armors_msg->header.stamp.sec*1e-9;
 
@@ -80,10 +70,8 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
         armor.center3d_cam = pnp_result.armor_cam;
         armor.euler = pnp_result.euler;
     }
-    RCLCPP_INFO(this->get_logger(), "armor_size = %lf", armors_msg->armors[0].positions[0].x);
     // TargetType target_type = SMALL;
     if(!armors.empty()){
-        RCLCPP_INFO(this->get_logger(), "armor_pos_x = %lf", armors_msg->armors[0].positions[0].x);
         armor_interfaces::msg::TargetInfo target_info;
         target_info.header = armors_msg->header;
         target_info.id = armors[0].key[0];

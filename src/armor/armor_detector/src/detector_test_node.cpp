@@ -74,14 +74,8 @@ private:
 
 		// detector_->detectArmor(img, armors);
 		if(detector_->isDebug){
-			if(!detector_->preprocess_img.empty()){
-				cv::imshow("pre_img", detector_->preprocess_img);
-			}
-			if(!detector_->lights_img.empty()){
-				cv::imshow("lights_img", detector_->lights_img);
-			}
-			if(!detector_->armors_img.empty()){
-				cv::imshow("armors_img", detector_->armors_img);
+			if(!detector_->debug_preprocess_img.empty()){
+				cv::imshow("pre_img", detector_->debug_preprocess_img);
 			}
 			cv::waitKey(1);
 		}
