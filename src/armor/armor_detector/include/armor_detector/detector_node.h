@@ -69,6 +69,9 @@ public:
 	void drawResults(
 		cv::Mat & img, const std::vector<Light> & lights, const std::vector<Armor> & armors);
 
+    // Camera center
+    cv::Point2f cam_center_;
+	
 	// Armor Detector
 	std::unique_ptr<Detector> detector_;
 	
