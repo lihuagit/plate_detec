@@ -29,8 +29,8 @@ public:
 		RCLCPP_INFO(this->get_logger(), "Starting VideoPubNode!");
 		src_img_pub_ = image_transport::create_publisher(this, "image_raw");
 		auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
-		cap_ = cv::VideoCapture(pkg_path + "/video/1.mp4");
-		timer_ = this->create_wall_timer(std::chrono::milliseconds(30), std::bind(&VideoPub::timer_callback, this));
+		cap_ = cv::VideoCapture(pkg_path + "/video/blue_1.mp4");
+		timer_ = this->create_wall_timer(std::chrono::milliseconds(10), std::bind(&VideoPub::timer_callback, this));
 	}
 
 private:
@@ -43,11 +43,12 @@ private:
 		cap_ >> frame;
 		if (frame.empty())
 		{
-		RCLCPP_ERROR(this->get_logger(), "frame is empty");
-		cap_.release();
-		auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
-		cap_ = cv::VideoCapture(pkg_path + "/video/1.mp4");
-		// return;
+			RCLCPP_ERROR(this->get_logger(), "frame is empty");
+			cap_.release();
+			auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
+			cap_ = cv::VideoCapture(pkg_path + "/video/blue_1.mp4");
+			cap_ >> frame;
+			// return;
 		}
 		cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
 		auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", frame).toImageMsg();
