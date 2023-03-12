@@ -32,14 +32,18 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     double time_now = 1.0 * armors_msg->header.stamp.nanosec + armors_msg->header.stamp.sec*1e-9;
 
     // TODO:
-    cv::Point2f cam_center_(640/2.f, -1*480/2.f);
+    cam_center_ = cv::Point2f(coord_solver.intrinsic_cpy.at<float>(0, 2), coord_solver.intrinsic_cpy.at<float>(1, 2));
 
     std::vector<Armor> armors;
     for(const auto & armor_msg : armors_msg->armors){
         Armor armor;
         armor.id = armor_msg.number;
-        for(auto & point : armor_msg.positions)
-            armor.positions2d.push_back(cv::Point2f(point.x, -1*point.y) - cam_center_);
+        for(auto & point : armor_msg.positions){
+            // armor.positions2d.push_back(cv::Point2f(point.x, -1*point.y) - cam_center_);
+            armor.positions2d.push_back(cv::Point2f(point.x, point.y));
+            RCLCPP_INFO(this->get_logger(), "point.x: %f, point.y: %f", point.x, point.y);
+        }
+        
         armor.key = armor.id;
         armor.time_stamp = time_now;
         cv::Point2f position_sum;

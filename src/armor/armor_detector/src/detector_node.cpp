@@ -66,14 +66,14 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 
 	//   RCLCPP_INFO(this->get_logger(), "Starting camera!");
 
-	//   cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
-	//     "/camera_info", rclcpp::SensorDataQoS(),
-	//     [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info) {
-	//       cam_center_ = cv::Point2f(camera_info->k[2], camera_info->k[5]);
-	//       cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camera_info);
-	//       pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
-	//       cam_info_sub_.reset();
-	//     });
+	  cam_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
+	    "/camera_info", rclcpp::SensorDataQoS(),
+	    [this](sensor_msgs::msg::CameraInfo::ConstSharedPtr camera_info) {
+	      cam_center_ = cv::Point2f(camera_info->k[2], camera_info->k[5]);
+	      cam_info_ = std::make_shared<sensor_msgs::msg::CameraInfo>(*camera_info);
+	    //   pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
+	      cam_info_sub_.reset();
+	    });
 
 	RCLCPP_INFO(this->get_logger(), "Starting img!");
 

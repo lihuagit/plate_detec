@@ -66,6 +66,8 @@ public:
     Eigen::Vector2d calcYawPitch(Eigen::Vector3d &xyz);
 
     cv::Point2f reproject(Eigen::Vector3d &xyz);
+    
+    Mat intrinsic_cpy;
 private:
     // 使用迭代法求解pitch补偿的最大迭代次数
     int max_iter;

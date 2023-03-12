@@ -62,56 +62,57 @@ bool CoordSolver::loadParam(string coord_path, string param_name)
     // cv::cv2eigen(F_MAT, F);
     // cv::cv2eigen(C_MAT, C);
 
-  Eigen::MatrixXd mat_intrinsic(3, 3);
-  Eigen::MatrixXd mat_ic(4, 4);
-  Eigen::MatrixXd mat_ci(4, 4);
-  Eigen::MatrixXd mat_coeff(1, 5);
-  Eigen::MatrixXd mat_xyz_offset(1,3);
-  Eigen::MatrixXd mat_t_iw(1,3);
-  Eigen::MatrixXd mat_angle_offset(1,2);
+	Eigen::MatrixXd mat_intrinsic(3, 3);
+	Eigen::MatrixXd mat_ic(4, 4);
+	Eigen::MatrixXd mat_ci(4, 4);
+	Eigen::MatrixXd mat_coeff(1, 5);
+	Eigen::MatrixXd mat_xyz_offset(1,3);
+	Eigen::MatrixXd mat_t_iw(1,3);
+	Eigen::MatrixXd mat_angle_offset(1,2);
 
-  //初始化弹道补偿参数
-  fin[param_name]["max_iter"] >> max_iter;
-  fin[param_name]["stop_error"] >> stop_error;
-  fin[param_name]["R_K_iter"] >> R_K_iter;
+	//初始化弹道补偿参数
+	fin[param_name]["max_iter"] >> max_iter;
+	fin[param_name]["stop_error"] >> stop_error;
+	fin[param_name]["R_K_iter"] >> R_K_iter;
 
-  // //初始化内参矩阵
-  std::vector<float> read_vector;
-  fin[param_name]["Intrinsic"] >> read_vector;
-  // auto read_vector = config[param_name]["Intrinsic"].as<vector<float>>();
-  initMatrix(mat_intrinsic,read_vector);
-  eigen2cv(mat_intrinsic,intrinsic);
+	// //初始化内参矩阵
+	std::vector<float> read_vector;
+	fin[param_name]["Intrinsic"] >> read_vector;
+	// auto read_vector = config[param_name]["Intrinsic"].as<vector<float>>();
+	initMatrix(mat_intrinsic,read_vector);
+	eigen2cv(mat_intrinsic,intrinsic);
+	intrinsic_cpy = intrinsic.clone();
 
-  //初始化畸变矩阵
-  read_vector.clear();
-  fin[param_name]["Coeff"] >> read_vector;
-  initMatrix(mat_coeff,read_vector);
-  eigen2cv(mat_coeff,dis_coeff);
+	//初始化畸变矩阵
+	read_vector.clear();
+	fin[param_name]["Coeff"] >> read_vector;
+	initMatrix(mat_coeff,read_vector);
+	eigen2cv(mat_coeff,dis_coeff);
 
-  read_vector.clear();
-  fin[param_name]["T_iw"] >> read_vector;
-  initMatrix(mat_t_iw,read_vector);
-  t_iw = mat_t_iw.transpose();
+	read_vector.clear();
+	fin[param_name]["T_iw"] >> read_vector;
+	initMatrix(mat_t_iw,read_vector);
+	t_iw = mat_t_iw.transpose();
 
-  read_vector.clear();
-  fin[param_name]["xyz_offset"] >> read_vector;
-  initMatrix(mat_xyz_offset,read_vector);
-  xyz_offset = mat_xyz_offset.transpose();
+	read_vector.clear();
+	fin[param_name]["xyz_offset"] >> read_vector;
+	initMatrix(mat_xyz_offset,read_vector);
+	xyz_offset = mat_xyz_offset.transpose();
 
-  read_vector.clear();
-  fin[param_name]["angle_offset"] >> read_vector;
-  initMatrix(mat_angle_offset,read_vector);
-  angle_offset = mat_angle_offset.transpose();
+	read_vector.clear();
+	fin[param_name]["angle_offset"] >> read_vector;
+	initMatrix(mat_angle_offset,read_vector);
+	angle_offset = mat_angle_offset.transpose();
 
-  read_vector.clear();
-  fin[param_name]["T_ic"] >> read_vector;
-  initMatrix(mat_ic,read_vector);
-  transform_ic = mat_ic;
+	read_vector.clear();
+	fin[param_name]["T_ic"] >> read_vector;
+	initMatrix(mat_ic,read_vector);
+	transform_ic = mat_ic;
 
-  read_vector.clear();
-  fin[param_name]["T_ci"] >> read_vector;
-  initMatrix(mat_ci,read_vector);
-  transform_ci = mat_ci;
+	read_vector.clear();
+	fin[param_name]["T_ci"] >> read_vector;
+	initMatrix(mat_ci,read_vector);
+	transform_ci = mat_ci;
 
 
   // //初始化弹道补偿参数
@@ -150,7 +151,7 @@ bool CoordSolver::loadParam(string coord_path, string param_name)
   // initMatrix(mat_ci,read_vector);
   // transform_ci = mat_ci;
 
-  return true;
+  	return true;
 }
 
 /**

@@ -69,6 +69,12 @@ public:
 	void drawResults(
 		cv::Mat & img, const std::vector<Light> & lights, const std::vector<Armor> & armors);
 
+	// Camera info subscription
+	rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr cam_info_sub_;
+
+	// Camera info
+	std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
+	
     // Camera center
     cv::Point2f cam_center_;
 	
