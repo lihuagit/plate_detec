@@ -24,12 +24,13 @@
  */
 struct Predict {
     template<class T>
-    void operator()(const T x0[5], T x1[5]) {
+    void operator()(const T x0[6], T x1[6]) {
         x1[0] = x0[0] + delta_t * x0[1];  //0.1
         x1[1] = x0[1];  //100
         x1[2] = x0[2] + delta_t * x0[3];  //0.1
         x1[3] = x0[3];  //100
-        x1[4] = x0[4];  //0.01
+        x1[4] = x0[4] + delta_t * x0[5];  //0.01
+        x1[5] = x0[5];  //100
     }
     double delta_t;
 };
@@ -49,7 +50,7 @@ struct Measure {
      * 工具函数的类封装
      */
     template<class T>
-    void operator()(const T x[5], T y[3]) {
+    void operator()(const T x[6], T y[3]) {
         T x_[3] = {x[0], x[2], x[4]};
         xyz2pyd(x_, y);
     }
@@ -62,6 +63,7 @@ struct Armor
 {
     char id;
     double time_stamp;
+    double area;
     std::string key;
     std::vector<cv::Point2f> positions2d;
     cv::Point2f center2d;
@@ -70,26 +72,43 @@ struct Armor
     Eigen::Vector3d euler;
     Eigen::Vector3d predict;
 };
+struct EKF_param {
+    Eigen::Matrix<double, 6, 6> Q;     // 预测过程协方差
+    Eigen::Matrix<double, 3, 3> R;     // 观测过程协方差
+};
 
 class ArmorTracker{
 private:
-    AdaptiveEKF<5, 3> ekf;  // 创建ekf
+    AdaptiveEKF<6, 3> ekf;  // 创建ekf
+    enum State {
+        LOST,           //丢失
+        DETECTING,      //检测中
+        TRACKING,       //跟踪中
+        TEMP_LOST,      //临时丢失
+    } tracker_state;    //跟踪状态
 
 public:
-    ArmorTracker(Armor src, double timestmp);
-    Armor pre_armor;               //上一次装甲板
-    Armor last_armor;            //本次装甲板
-    bool is_initialized;
-    double pre_timestamp;             //上次装甲板时间戳
-    double last_timestamp;          //本次装甲板时间戳
-    const int max_history_len = 4;  //历史信息队列最大长度
-    double velocity;
-    double radius;
+    ArmorTracker(EKF_param& param);
+    void init(Armor& src, double timestmp);
+    Armor pre_armor;                    //上一次装甲板
+    double pre_timestamp;               //上次装甲板时间戳
 
-    std::deque<Armor> history_info;//目标队列
+    double max_lost_time;               //最大丢失时间
+    double max_lost_distance;           //最大距离
 
-    std::vector<double> predict(const Armor& src, double timestmp);
-    std::vector<double> update(const Armor& src, double timestmp);
+    int lost_count;                     //丢失次数
+    int lost_count_threshold;           //丢失次数阈值
+    int matched_count;                  //匹配成功次数
+    int matched_count_threshold;        //匹配成功次数阈值
+
+    
+    Armor suggest_armor;                //建议装甲板
+    bool suggest_fire;                  //建议开火
+
+    Eigen::VectorXd predict_filter(double timestmp);
+    Eigen::VectorXd update_filter(const Armor& src);
+    void update(const std::vector<Armor> & src, double timestmp);
+    bool getTargetArmor(Armor& target_armor);
 };
 
 #endif // ARMOR_TRACKER__COORDSOLVER_HPP
