@@ -24,7 +24,8 @@
 #include <ament_index_cpp/get_package_share_directory.hpp>
 
 // user
-#include "armor_tracker/tracker.h"
+// #include "armor_tracker/tracker.h"
+#include "armor_tracker/tracker_kalman.h"
 #include "armor_tracker/general.h"
 #include "armor_tracker/coordsolver.h"
 #include "armor_interfaces/msg/armors.hpp"
@@ -39,7 +40,7 @@ enum TargetType {SMALL, BIG, BUFF};
  * @brief 记录装甲板追踪器信息
  */
 struct TrackerParams{
-    std::vector<ArmorTracker> armor_tracker;
+    std::vector<ArmorTrackerKalman> armor_tracker;
     SpinHeading spin_heading;   //反小陀螺，记录该车小陀螺状态
     double spin_score;  //反小陀螺，记录各装甲板小陀螺可能性分数，大于0为逆时针旋转，小于0为顺时针旋转
 };
@@ -62,7 +63,12 @@ private:
 
     unordered_map<std::string, TrackerParams> trackers_map;    //预测器Map
     std::map<string,int> new_armors_cnt_map;    //装甲板计数map，记录新增装甲板数
-    std::unique_ptr<ArmorTracker> tracker_;
+    // std::unique_ptr<ArmorTracker> tracker_;
+    // Initial KF matrices
+    KalmanFilterMatrices kf_matrices_;
+    std::unique_ptr<ArmorTrackerKalman> tracker_kalman_;
+    rclcpp::Time last_time_;
+    double dt_;
 
     // Camera center
     cv::Point2f cam_center_;
@@ -78,7 +84,6 @@ private:
     
     // 更新反陀螺参数
     bool updateSpinScore();
-    bool updateTracker(const std::vector<Armor> &armors, double timestmp);
     std::string chooseTargetID(vector<Armor> &armors);
     Armor chooseTargetArmor(vector<Armor> armors);
 };

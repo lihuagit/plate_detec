@@ -18,9 +18,7 @@
   <depend>message_filters</depend>
   <depend>eigen3</depend>
   <depend>cv_bridge</depend>
-  <!-- <depend>yaml-cpp</depend> -->
   <depend>fmt</depend>
-  <depend>glog</depend>
   <depend>armor_interfaces</depend>
 
   <test_depend>ament_lint_auto</test_depend>

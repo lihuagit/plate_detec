@@ -37,12 +37,17 @@ struct Predict {
 
 template<class T>
 void xyz2pyd(T xyz[3], T pyd[3]) {
-    /*
-     * 工具函数：将 xyz 转化为 pitch、yaw、distance
-     */
-    pyd[0] = ceres::atan2(xyz[2], ceres::sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));  // pitch
-    pyd[1] = ceres::atan2(xyz[1], xyz[0]);  // yaw
-    pyd[2] = ceres::sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]);  // distance
+    // /*
+    //  * 工具函数：将 xyz 转化为 pitch、yaw、distance
+    //  */
+    // pyd[0] = ceres::atan2(xyz[2], ceres::sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]));  // pitch
+    // pyd[1] = ceres::atan2(xyz[1], xyz[0]);  // yaw
+    // pyd[2] = ceres::sqrt(xyz[0]*xyz[0]+xyz[1]*xyz[1]+xyz[2]*xyz[2]);  // distance
+
+    // 就使用xyz
+    pyd[0] = xyz[0];
+    pyd[1] = xyz[1];
+    pyd[2] = xyz[2];
 }
 
 struct Measure {
@@ -71,6 +76,7 @@ struct Armor
     Eigen::Vector3d center3d_world;
     Eigen::Vector3d euler;
     Eigen::Vector3d predict;
+    Eigen::Vector2d angle;
 };
 struct EKF_param {
     Eigen::Matrix<double, 6, 6> Q;     // 预测过程协方差

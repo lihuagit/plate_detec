@@ -61,8 +61,8 @@ public:
     Eigen::Vector2d staticAngleOffset(Eigen::Vector2d &angle);
     Eigen::Vector2d getAngle(Eigen::Vector3d &xyz_cam, Eigen::Matrix3d &rmat);
 
-    inline double calcYaw(Eigen::Vector3d &xyz);
-    inline double calcPitch(Eigen::Vector3d &xyz);
+    double calcYaw(Eigen::Vector3d &xyz);
+    double calcPitch(Eigen::Vector3d &xyz);
     Eigen::Vector2d calcYawPitch(Eigen::Vector3d &xyz);
 
     cv::Point2f reproject(Eigen::Vector3d &xyz);

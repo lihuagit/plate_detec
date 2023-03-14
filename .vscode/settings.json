@@ -76,7 +76,9 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "malloc.h": "c",
-        "cjson.h": "c"
+        "cjson.h": "c",
+        "core": "cpp",
+        "specialfunctions": "cpp"
     },
     "python.analysis.extraPaths": [
         "/opt/ros/galactic/lib/python3.8/site-packages/"

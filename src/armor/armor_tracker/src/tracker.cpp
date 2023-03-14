@@ -14,18 +14,27 @@ ArmorTracker::ArmorTracker(EKF_param& param){
     // 初始化EKF
     ekf.Q = param.Q;
     ekf.R = param.R;
+    ekf.P = Eigen::Matrix<double, 6, 6>::Identity();
+    ekf.init();
 }
 
 void ArmorTracker::init(Armor& src, double timestmp){
     pre_armor = src;
     pre_timestamp = timestmp;
     Eigen::Matrix<double, 6, 1> Xe;
-    Xe(0, 0) = src.euler(0, 0);
-    Xe(1, 0) = ekf.Xe(1, 0);
-    Xe(2, 0) = src.euler(1, 0);
-    Xe(3, 0) = ekf.Xe(3, 0);
-    Xe(4, 0) = src.euler(2, 0);
-    Xe(5, 0) = ekf.Xe(5, 0);
+    // Xe(0, 0) = src.center3d_world(0, 0);
+    // Xe(1, 0) = ekf.Xe(1, 0);
+    // Xe(2, 0) = src.center3d_world(1, 0);
+    // Xe(3, 0) = ekf.Xe(3, 0);
+    // Xe(4, 0) = src.center3d_world(2, 0);
+    // Xe(5, 0) = ekf.Xe(5, 0);
+
+    Xe(0, 0) = src.center3d_world(0, 0);
+    Xe(1, 0) = 0;
+    Xe(2, 0) = src.center3d_world(1, 0);
+    Xe(3, 0) = 0;
+    Xe(4, 0) = src.center3d_world(2, 0);
+    Xe(5, 0) = 0;
 
     ekf.init(Xe);
 }
@@ -59,9 +68,17 @@ Eigen::VectorXd ArmorTracker::update_filter(const Armor& src){
 
     Eigen::Matrix<double, 6, 1> Xr;
     Xr << src.center3d_world[0], 0, src.center3d_world[1], 0, src.center3d_world[2], 0;
+
+    std::cout<<"Xr: "<<Xr.transpose()<<std::endl;
+
     Eigen::Matrix<double, 3, 1> Yr;
     measure(Xr.data(), Yr.data());      // 转化成球面坐标 Yr
+
+    std::cout<<"Yr: "<<Yr.transpose()<<std::endl;
+
     Eigen::Matrix<double, 6, 1> Xe = ekf.update(measure, Yr);   // 更新滤波器，输入真实的球面坐标 Yr
+
+    std::cout<<"Xe: "<<Xe.transpose()<<std::endl;
 
     pre_armor = src;
 
@@ -114,10 +131,10 @@ void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
             tracker_state = DETECTING;
         }
     }
-
     if(matched){
         Eigen::VectorXd ekf_update = update_filter(suggest_armor);           // 更新值
         Eigen::Vector3d ekf_update_position(ekf_update[0], ekf_update[2], ekf_update[4]);  // 更新位置
+        std::cout<<"update_position: "<<ekf_update_position.transpose()<<std::endl;
 
         // 更新建议击打装甲板
         suggest_armor.predict = ekf_update_position;

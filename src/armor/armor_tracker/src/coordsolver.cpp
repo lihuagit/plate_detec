@@ -272,7 +272,7 @@ cv::Point2f CoordSolver::reproject(Eigen::Vector3d& xyz)
  * @param xyz 待补偿坐标
  * @return Eigen::Vector3d 补偿后坐标
  */
-inline Eigen::Vector3d CoordSolver::staticCoordOffset(Eigen::Vector3d& xyz)
+Eigen::Vector3d CoordSolver::staticCoordOffset(Eigen::Vector3d& xyz)
 {
   return xyz + xyz_offset;
 }
@@ -283,7 +283,7 @@ inline Eigen::Vector3d CoordSolver::staticCoordOffset(Eigen::Vector3d& xyz)
  * @param angle 待补偿角度
  * @return Eigen::Vector2d 补偿后角度
  */
-inline Eigen::Vector2d CoordSolver::staticAngleOffset(Eigen::Vector2d& angle)
+Eigen::Vector2d CoordSolver::staticAngleOffset(Eigen::Vector2d& angle)
 {
   return angle + angle_offset;
 }
@@ -293,7 +293,7 @@ inline Eigen::Vector2d CoordSolver::staticAngleOffset(Eigen::Vector2d& angle)
  * @param xyz 坐标
  * @return double yaw角度
  */
-inline double CoordSolver::calcYaw(Eigen::Vector3d& xyz)
+double CoordSolver::calcYaw(Eigen::Vector3d& xyz)
 {
   return atan2(xyz[0], xyz[2]) * 180 / CV_PI;
 }
@@ -304,7 +304,7 @@ inline double CoordSolver::calcYaw(Eigen::Vector3d& xyz)
  * @param xyz 坐标
  * @return double Pitch角度
  */
-inline double CoordSolver::calcPitch(Eigen::Vector3d& xyz)
+double CoordSolver::calcPitch(Eigen::Vector3d& xyz)
 {
   return -(atan2(xyz[1], sqrt(xyz[0] * xyz[0] + xyz[2] * xyz[2])) * 180 / CV_PI);
   // return (atan2(xyz[1], sqrt(xyz[0] * xyz[0] + xyz[2] * xyz[2])) * 180 / CV_PI);
@@ -314,7 +314,7 @@ inline double CoordSolver::calcPitch(Eigen::Vector3d& xyz)
  * @brief 计算目标Yaw,Pitch角度
  * @return Yaw与Pitch
  */
-inline Eigen::Vector2d CoordSolver::calcYawPitch(Eigen::Vector3d& xyz)
+Eigen::Vector2d CoordSolver::calcYawPitch(Eigen::Vector3d& xyz)
 {
   Eigen::Vector2d angle;
   // Yaw(逆时针)
@@ -329,7 +329,7 @@ inline Eigen::Vector2d CoordSolver::calcYawPitch(Eigen::Vector3d& xyz)
  * @param xyz 坐标
  * @return double Pitch偏移量
  */
-inline double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d& xyz)
+double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d& xyz)
 {
   // TODO:根据陀螺仪安装位置调整距离求解方式
   //降维，坐标系Y轴以垂直向上为正方向
