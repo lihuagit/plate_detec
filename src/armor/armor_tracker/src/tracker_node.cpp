@@ -17,45 +17,16 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 {
     RCLCPP_INFO(this->get_logger(), "Starting armor_tracker_node!");
 
+    // 弹速
+    shoot_v = this->declare_parameter("tracker.shoot_v", 15.0);
+
     // 位姿解算器
     auto pkg_path = ament_index_cpp::get_package_share_directory("armor_tracker");
     coord_solver.loadParam(pkg_path+"/params/coord_param.yaml", "KE0200110076");
+    coord_solver.bullet_speed = shoot_v;
 
-    // Kalman Filter initial matrix
-    // A - state transition matrix
-    // clang-format off
-    Eigen::Matrix<double, 6, 6> f;
-    f <<  1,  0,  0, dt_, 0,  0,
-            0,  1,  0,  0, dt_, 0,
-            0,  0,  1,  0,  0, dt_,
-            0,  0,  0,  1,  0,  0,
-            0,  0,  0,  0,  1,  0,
-            0,  0,  0,  0,  0,  1;
-    // clang-format on
-
-    // H - measurement matrix
-    Eigen::Matrix<double, 3, 6> h;
-    h.setIdentity();
-
-    // Q - process noise covariance matrix
-    Eigen::DiagonalMatrix<double, 6> q;
-    q.diagonal() << 0.01, 0.01, 0.01, 0.1, 0.1, 0.1;
-
-    // R - measurement noise covariance matrix
-    Eigen::DiagonalMatrix<double, 3> r;
-    r.diagonal() << 0.05, 0.05, 0.05;
-
-    // P - error estimate covariance matrix
-    Eigen::DiagonalMatrix<double, 6> p;
-    p.setIdentity();
-
-    kf_matrices_ = KalmanFilterMatrices{f, h, q, r, p};
-    // Tracker
-    double max_match_distance = this->declare_parameter("tracker.max_match_distance", 0.2);
-    int tracking_threshold = this->declare_parameter("tracker.tracking_threshold", 5);
-    int lost_threshold = this->declare_parameter("tracker.lost_threshold", 5);
-    tracker_kalman_ =
-        std::make_unique<ArmorTrackerKalman>(kf_matrices_, max_match_distance, tracking_threshold, lost_threshold);
+    // tracker
+    createTrackers();
 
     target_info_pub_ = this->create_publisher<armor_interfaces::msg::TargetInfo>("/processor/target", rclcpp::SensorDataQoS());
     
@@ -66,8 +37,10 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstSharedPtr armors_msg){
     RCLCPP_INFO(this->get_logger(), "recvice armors!");
 
-    double time_now = 1.0 * armors_msg->header.stamp.nanosec + armors_msg->header.stamp.sec*1e-9;
     rclcpp::Time time = armors_msg->header.stamp;
+
+    // 现在的时间，单位s
+    double time_now = time.seconds();
 
     cam_center_ = cv::Point2f(coord_solver.intrinsic_cpy.at<float>(0, 2), coord_solver.intrinsic_cpy.at<float>(1, 2));
 
@@ -103,35 +76,27 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
         armor.center3d_cam = pnp_result.armor_cam;
         armor.euler = pnp_result.euler;
         RCLCPP_INFO(this->get_logger(), "armor_world.x: %f, armor_world.y: %f, armor_world.z: %f", pnp_result.armor_world.x(), pnp_result.armor_world.y(), pnp_result.armor_world.z());
-        
     }
 
+    // Tracker
     bool is_tracking = false;
-    if (tracker_kalman_->tracker_state == ArmorTrackerKalman::LOST) {
-        tracker_kalman_->init(armors, 0);
-    } else {
-        // Set dt
-        dt_ = (time - last_time_).seconds();
-        RCLCPP_INFO(this->get_logger(), "dt_: %f", dt_);
-        // Update state
-        tracker_kalman_->update(armors, 10*dt_);
-        if (tracker_kalman_->tracker_state == ArmorTrackerKalman::TRACKING ||
-            tracker_kalman_->tracker_state == ArmorTrackerKalman::TEMP_LOST) {
-            is_tracking = true;
-        }
-    }
-    last_time_ = time;
+    tracker_ptr_->update(armors, time_now);
 
-    Armor target_armor = tracker_kalman_->suggest_armor;
+    // double delta_t = ;
+    Eigen::Vector3d target_center3d;
+    is_tracking = tracker_ptr_->getTargetArmor(shoot_v, target_center3d);
+    RCLCPP_INFO(this->get_logger(), "is_tracking: %d", is_tracking);
+
+    Armor target_armor;
 
     if(is_tracking)
-        target_armor.predict = tracker_kalman_->target_state.head(3);
+        target_armor = tracker_ptr_->pre_armor;
     else
         return ;
         
     RCLCPP_INFO(this->get_logger(), "target_armor.predict.x: %f, target_armor.predict.y: %f, target_armor.predict.z: %f", target_armor.predict.x(), target_armor.predict.y(), target_armor.predict.z());
     
-    auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.predict);
+    auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.center3d_world);
     // auto pitch_offset = geiPitch(target_armor.predict);
     RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
     target_armor.angle = coord_solver.calcYawPitch(target_armor.predict);
@@ -153,6 +118,31 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     target_info.euler.x = target_armor.angle.x();
     target_info.euler.y = target_armor.angle.y();
     target_info_pub_->publish(target_info);
+}
+
+/**
+ * @brief 构造追踪器函数
+ */
+void ArmorTrackerNode::createTrackers(){
+    EKF_param param;
+    param.Q(0, 0) = this->declare_parameter("tracker.Q00", 0.1);
+    param.Q(1, 1) = this->declare_parameter("tracker.Q11", 0.1);
+    param.Q(2, 2) = this->declare_parameter("tracker.Q22", 0.1);
+    param.Q(3, 3) = this->declare_parameter("tracker.Q33", 0.1);
+    param.Q(4, 4) = this->declare_parameter("tracker.Q44", 0.1);
+    param.Q(5, 5) = this->declare_parameter("tracker.Q55", 0.1);
+
+    param.R(0, 0) = this->declare_parameter("tracker.R00", 1);
+    param.R(1, 1) = this->declare_parameter("tracker.R11", 1);
+    param.R(2, 2) = this->declare_parameter("tracker.R22", 1);
+
+
+    double max_lost_time_ = this->declare_parameter("tracker.max_lost_time", 0.5);
+    double max_lost_distance_ = this->declare_parameter("tracker.max_lost_distance", 0.4);
+    int lost_count_threshold_ = this->declare_parameter("tracker.lost_count_threshold", 10);
+    int match_count_threshold_ = this->declare_parameter("tracker.match_count_threshold", 10);
+    // ArmorTracker
+    tracker_ptr_ = std::make_unique<ArmorTracker>(param, max_lost_time_, max_lost_distance_, lost_count_threshold_, match_count_threshold_);
 }
 
 /**

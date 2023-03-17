@@ -66,17 +66,17 @@ struct Measure {
  */
 struct Armor
 {
-    char id;
-    double time_stamp;
-    double area;
-    std::string key;
-    std::vector<cv::Point2f> positions2d;
-    cv::Point2f center2d;
-    Eigen::Vector3d center3d_cam;
-    Eigen::Vector3d center3d_world;
-    Eigen::Vector3d euler;
-    Eigen::Vector3d predict;
-    Eigen::Vector2d angle;
+    char id;                                // 装甲板id（TODO: 与key功能重合，后续考虑删除）
+    double time_stamp;                      // 时间戳
+    double area;                            // 装甲板面积
+    std::string key;                        // 装甲板key
+    std::vector<cv::Point2f> positions2d;   // 装甲板角点二维坐标
+    cv::Point2f center2d;                   // 装甲板二维坐标中心点
+    Eigen::Vector3d center3d_cam;           // 相机坐标系下的坐标
+    Eigen::Vector3d center3d_world;         // 世界坐标系下的坐标
+    Eigen::Vector3d euler;                  // pnp解算出的欧拉角
+    Eigen::Vector3d predict;                // 预测值
+    Eigen::Vector2d angle;                  // pitch yaw
 };
 struct EKF_param {
     Eigen::Matrix<double, 6, 6> Q;     // 预测过程协方差
@@ -87,15 +87,15 @@ class ArmorTracker{
 private:
     AdaptiveEKF<6, 3> ekf;  // 创建ekf
     enum State {
-        LOST,           //丢失
         DETECTING,      //检测中
         TRACKING,       //跟踪中
         TEMP_LOST,      //临时丢失
     } tracker_state;    //跟踪状态
 
 public:
-    ArmorTracker(EKF_param& param);
-    void init(Armor& src, double timestmp);
+    ArmorTracker(   EKF_param param, double max_lost_time_, double max_lost_distance_,
+                    int lost_count_threshold_, int match_count_threshold_);
+    void init(const Armor& src, double timestmp);
     Armor pre_armor;                    //上一次装甲板
     double pre_timestamp;               //上次装甲板时间戳
 
@@ -107,14 +107,8 @@ public:
     int matched_count;                  //匹配成功次数
     int matched_count_threshold;        //匹配成功次数阈值
 
-    
-    Armor suggest_armor;                //建议装甲板
-    bool suggest_fire;                  //建议开火
-
-    Eigen::VectorXd predict_filter(double timestmp);
-    Eigen::VectorXd update_filter(const Armor& src);
     void update(const std::vector<Armor> & src, double timestmp);
-    bool getTargetArmor(Armor& target_armor);
+    bool getTargetArmor(double shoot_v, Eigen::Vector3d& target_center3d);
 };
 
 #endif // ARMOR_TRACKER__COORDSOLVER_HPP

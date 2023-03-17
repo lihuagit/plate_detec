@@ -30,6 +30,12 @@ public:
         Xe = X0;
     }
 
+    void reset(const VectorX &X0 = VectorX::Zero()) {
+        Xe = X0;
+        P = MatrixXX::Identity();
+        K = MatrixXY::Zero();
+    }
+
     template<class Func>
     VectorX predict(Func &&func) {
         ceres::Jet<double, N_X> Xe_auto_jet[N_X];
@@ -44,7 +50,6 @@ public:
             F.block(i, 0, 1, N_X) = Xp_auto_jet[i].v.transpose();
         }
         P = F * P * F.transpose() + Q;
-        std::cout<<"F: "<<F<<std::endl;
         return Xp;
     }
 
@@ -61,15 +66,9 @@ public:
             Yp[i] = Yp_auto_jet[i].a;
             H.block(i, 0, 1, N_X) = Yp_auto_jet[i].v.transpose();
         }
-        std::cout<<"Yp: "<<Yp<<std::endl;
-        std::cout<<"H: "<<H<<std::endl;
         K = P * H.transpose() * (H * P * H.transpose() + R).inverse();
         Xe = Xp + K * (Y - Yp);
         P = (MatrixXX::Identity() - K * H) * P;
-
-        std::cout<<"Xe: "<<Xe<<std::endl;
-        std::cout<<"P: "<<P<<std::endl;
-        std::cout<<"K: "<<K<<std::endl;
         return Xe;
     }
 

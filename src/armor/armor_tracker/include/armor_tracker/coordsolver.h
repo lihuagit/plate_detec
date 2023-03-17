@@ -68,6 +68,7 @@ public:
     cv::Point2f reproject(Eigen::Vector3d &xyz);
     
     Mat intrinsic_cpy;
+    int bullet_speed = 28;            //TODO:弹速可变
 private:
     // 使用迭代法求解pitch补偿的最大迭代次数
     int max_iter;
@@ -94,7 +95,6 @@ private:
     YAML::Node param_node;
 
     const int armor_type_wh_thres = 7;      //大小装甲板长宽比阈值
-    const int bullet_speed = 28;            //TODO:弹速可变
     // const int bullet_speed = 16;            //TODO:弹速可变
     const double k = 0.0389;                //25°C,1atm,小弹丸
     // const double k = 0.0111;                //25°C,1atm,大弹丸
