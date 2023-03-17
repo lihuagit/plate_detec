@@ -93,6 +93,7 @@ public:
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr number_pub_;
 	image_transport::Publisher preprocess_img_pub_;
 	image_transport::Publisher final_img_pub_;
+	int fps;
 };
 } // namespace armor_auto_aim
 

@@ -91,18 +91,20 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 		active_ = p.as_bool();
 		if (active_)
 		{
-		if (img_sub_ == nullptr)
-		{
-			img_sub_ = std::make_shared<image_transport::Subscriber>(
-				image_transport::create_subscription(this, "/image_raw", std::bind(&DetectorNode::imageCallback, this, _1),
-													transport_, rmw_qos_profile_sensor_data));
-		}
+			if (img_sub_ == nullptr)
+			{
+				img_sub_ = std::make_shared<image_transport::Subscriber>(
+					image_transport::create_subscription(this, "/image_raw", std::bind(&DetectorNode::imageCallback, this, _1),
+														transport_, rmw_qos_profile_sensor_data));
+			}
 		}
 		else if (img_sub_ != nullptr)
 		{
-		img_sub_.reset();
+			img_sub_.reset();
 		}
 	});
+
+	fps = 0;
 
 	RCLCPP_INFO(this->get_logger(), "over!");
 }
@@ -114,6 +116,22 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 void DetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& img_msg)
 {
 	RCLCPP_INFO(this->get_logger(), "Receive img!");
+	
+	static rclcpp::Time last_time = this->now();
+	static int fps_tmp = 0;
+	auto start_time = this->now();
+
+	if((start_time - last_time).seconds() < 1){
+		fps_tmp++;
+	}
+	else{
+		fps = fps_tmp;
+		RCLCPP_INFO(this->get_logger(), "fps: %d", fps);
+		fps_tmp = 0;
+	}
+
+	last_time = start_time;
+
 
 	/// 检测装甲板
 	auto armors = detectArmors(img_msg);
@@ -231,6 +249,8 @@ std::vector<Armor> DetectorNode::detectArmors(const sensor_msgs::msg::Image::Con
 		auto latency = (final_time - start_time).seconds() * 1000;
 		RCLCPP_INFO_STREAM(this->get_logger(), "detectArmors used: " << latency << "ms");
 		cv::putText(img, "Latency: " + std::to_string(latency) + "ms", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0,
+					cv::Scalar(0, 255, 0), 2);
+		cv::putText(img, "pfs: " + std::to_string(fps) , cv::Point(10, 80), cv::FONT_HERSHEY_SIMPLEX, 1.0,
 					cv::Scalar(0, 255, 0), 2);
 
 		// binary_img_pub_.publish(cv_bridge::CvImage(img_msg->header, "mono8", binary_img).toImageMsg());
