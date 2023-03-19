@@ -13,12 +13,16 @@ namespace armor_auto_aim
 {
 // DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_detector", options)
 ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
-    : Node("armor_tracker_node", options), last_time_(0), dt_(0)
+    : Node("armor_tracker_node", options)
 {
     RCLCPP_INFO(this->get_logger(), "Starting armor_tracker_node!");
 
     // 弹速
-    shoot_v = this->declare_parameter("tracker.shoot_v", 15.0);
+    shoot_v = this->declare_parameter("shoot_v", 15.0);
+
+    // 是否调试
+	debug_ = this->declare_parameter("debug", true);
+	tracker_img_pub_ = image_transport::create_publisher(this, "/tracker_img");
 
     // 位姿解算器
     auto pkg_path = ament_index_cpp::get_package_share_directory("armor_tracker");
@@ -35,8 +39,6 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 }
 
 void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstSharedPtr armors_msg){
-    RCLCPP_INFO(this->get_logger(), "recvice armors!");
-
     rclcpp::Time time = armors_msg->header.stamp;
 
     // 现在的时间，单位s
@@ -75,7 +77,6 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
         armor.center3d_world = pnp_result.armor_world;
         armor.center3d_cam = pnp_result.armor_cam;
         armor.euler = pnp_result.euler;
-        RCLCPP_INFO(this->get_logger(), "armor_world.x: %f, armor_world.y: %f, armor_world.z: %f", pnp_result.armor_world.x(), pnp_result.armor_world.y(), pnp_result.armor_world.z());
     }
 
     // Tracker
@@ -94,22 +95,25 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     else
         return ;
         
-    RCLCPP_INFO(this->get_logger(), "target_armor.predict.x: %f, target_armor.predict.y: %f, target_armor.predict.z: %f", target_armor.predict.x(), target_armor.predict.y(), target_armor.predict.z());
-    
     auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.center3d_world);
     // auto pitch_offset = geiPitch(target_armor.predict);
-    RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
     target_armor.angle = coord_solver.calcYawPitch(target_armor.predict);
     target_armor.angle.y() += pitch_offset;
-    RCLCPP_INFO(this->get_logger(), "target_armor.angle.x: %f, target_armor.angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
 
-    
-    cv::Mat show_mat(1280,1024,CV_8UC3, cv::Scalar(255,255,255));
-    cv::circle(show_mat, cam_center_, 5, cv::Scalar(255,0,0), -1);
-    cv::circle(show_mat, target_armor.center2d, 5, cv::Scalar(0,255,0), -1);
-    cv::circle(show_mat, coord_solver.reproject(target_armor.predict), 5, cv::Scalar(0,0,255), -1);
-    cv::imshow("show_mat", show_mat);
-    cv::waitKey(1);
+    if(debug_){
+        RCLCPP_INFO(this->get_logger(), "target_armor.center3d_world.x: %f, target_armor.center3d_world.y: %f, target_armor.center3d_world.z: %f", target_armor.center3d_world.x(), target_armor.center3d_world.y(), target_armor.center3d_world.z()); 
+        RCLCPP_INFO(this->get_logger(), "target_armor.predict.x: %f, target_armor.predict.y: %f, target_armor.predict.z: %f", target_armor.predict.x(), target_armor.predict.y(), target_armor.predict.z());
+        RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
+        RCLCPP_INFO(this->get_logger(), "target_armor.angle.x: %f, target_armor.angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
+        
+        cv::Mat show_mat(1280,1024,CV_8UC3, cv::Scalar(255,255,255));
+		cv::cvtColor(show_mat, show_mat, cv::COLOR_BGR2RGB);
+        cv::circle(show_mat, cam_center_, 5, cv::Scalar(255,0,0), -1);
+        cv::circle(show_mat, target_armor.center2d, 5, cv::Scalar(0,255,0), -1);
+        cv::circle(show_mat, coord_solver.reproject(target_armor.predict), 5, cv::Scalar(0,0,255), -1);
+        cv::imshow("show_mat", show_mat);
+		tracker_img_pub_.publish(cv_bridge::CvImage(armors_msg->header, "rgb8", show_mat).toImageMsg());
+    }
     
     // 发布目标装甲板信息
     armor_interfaces::msg::TargetInfo target_info;
@@ -125,22 +129,22 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
  */
 void ArmorTrackerNode::createTrackers(){
     EKF_param param;
-    param.Q(0, 0) = this->declare_parameter("tracker.Q00", 0.1);
-    param.Q(1, 1) = this->declare_parameter("tracker.Q11", 0.1);
-    param.Q(2, 2) = this->declare_parameter("tracker.Q22", 0.1);
-    param.Q(3, 3) = this->declare_parameter("tracker.Q33", 0.1);
-    param.Q(4, 4) = this->declare_parameter("tracker.Q44", 0.1);
-    param.Q(5, 5) = this->declare_parameter("tracker.Q55", 0.1);
+    param.Q(0, 0) = this->declare_parameter("ekf.Q00", 0.01);
+    param.Q(1, 1) = this->declare_parameter("ekf.Q11", 0.1);
+    param.Q(2, 2) = this->declare_parameter("ekf.Q22", 0.01);
+    param.Q(3, 3) = this->declare_parameter("ekf.Q33", 0.1);
+    param.Q(4, 4) = this->declare_parameter("ekf.Q44", 0.01);
+    param.Q(5, 5) = this->declare_parameter("ekf.Q55", 0.1);
 
-    param.R(0, 0) = this->declare_parameter("tracker.R00", 1);
-    param.R(1, 1) = this->declare_parameter("tracker.R11", 1);
-    param.R(2, 2) = this->declare_parameter("tracker.R22", 1);
+    param.R(0, 0) = this->declare_parameter("ekf.R00", 0.05);
+    param.R(1, 1) = this->declare_parameter("ekf.R11", 0.05);
+    param.R(2, 2) = this->declare_parameter("ekf.R22", 0.05);
 
 
-    double max_lost_time_ = this->declare_parameter("tracker.max_lost_time", 0.5);
-    double max_lost_distance_ = this->declare_parameter("tracker.max_lost_distance", 0.4);
-    int lost_count_threshold_ = this->declare_parameter("tracker.lost_count_threshold", 10);
-    int match_count_threshold_ = this->declare_parameter("tracker.match_count_threshold", 10);
+    double max_lost_time_ = this->declare_parameter("max_lost_time", 0.5);
+    double max_lost_distance_ = this->declare_parameter("max_lost_distance", 0.4);
+    int lost_count_threshold_ = this->declare_parameter("lost_count_threshold", 10);
+    int match_count_threshold_ = this->declare_parameter("match_count_threshold", 10);
     // ArmorTracker
     tracker_ptr_ = std::make_unique<ArmorTracker>(param, max_lost_time_, max_lost_distance_, lost_count_threshold_, match_count_threshold_);
 }

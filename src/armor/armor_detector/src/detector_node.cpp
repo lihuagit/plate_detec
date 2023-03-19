@@ -17,6 +17,8 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 {
 	RCLCPP_INFO(this->get_logger(), "Starting DetectorNode!");
 
+	debug_ = this->declare_parameter("debug", true);
+
 	// Detector
 	detector_ = initDetector();
 
@@ -51,7 +53,6 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 	//   this->create_publisher<visualization_msgs::msg::MarkerArray>("/detector/marker", 10);
 
 	// Debug Publishers
-	debug_ = this->declare_parameter("debug", true);
 	if (debug_)
 	{
 		createDebugPublishers();
@@ -74,8 +75,6 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 	    //   pnp_solver_ = std::make_unique<PnPSolver>(camera_info->k, camera_info->d);
 	      cam_info_sub_.reset();
 	    });
-
-	RCLCPP_INFO(this->get_logger(), "Starting img!");
 
 	// Subscriptions transport type
 	transport_ = this->declare_parameter("subscribe_compressed", false) ? "compressed" : "raw";
@@ -105,8 +104,6 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
 	});
 
 	fps = 0;
-
-	RCLCPP_INFO(this->get_logger(), "over!");
 }
 
 /**
@@ -115,23 +112,21 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options) : Node("armor_det
  */
 void DetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& img_msg)
 {
-	RCLCPP_INFO(this->get_logger(), "Receive img!");
-	
-	static rclcpp::Time last_time = this->now();
-	static int fps_tmp = 0;
-	auto start_time = this->now();
+	if(debug_){
+		static rclcpp::Time last_time = this->now();
+		static int fps_tmp = 0;
+		auto start_time = this->now();
 
-	if((start_time - last_time).seconds() < 1){
-		fps_tmp++;
+		if((start_time - last_time).seconds() < 1){
+			fps_tmp++;
+		}
+		else{
+			fps = fps_tmp;
+			RCLCPP_INFO(this->get_logger(), "fps: %d", fps);
+			fps_tmp = 0;
+			last_time = start_time;
+		}
 	}
-	else{
-		fps = fps_tmp;
-		RCLCPP_INFO(this->get_logger(), "fps: %d", fps);
-		fps_tmp = 0;
-	}
-
-	last_time = start_time;
-
 
 	/// 检测装甲板
 	auto armors = detectArmors(img_msg);
@@ -204,9 +199,7 @@ std::unique_ptr<Detector> DetectorNode::initDetector()
 		.max_angle = declare_parameter("armor.max_angle", 35.0)
 	};
 
-	bool is_debug = declare_parameter("is_debug", true);
-
-	return std::make_unique<Detector>(min_lightness, detect_color, l_params, a_params, is_debug);
+	return std::make_unique<Detector>(min_lightness, detect_color, l_params, a_params, debug_);
 }
 
 /**

@@ -22,6 +22,10 @@
 #include <rclcpp/subscription.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <image_transport/image_transport.hpp>
+#include <image_transport/publisher.hpp>
+#include <image_transport/subscriber_filter.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 // user
 #include "armor_tracker/tracker.h"
@@ -66,9 +70,6 @@ private:
 
     std::unique_ptr<ArmorTracker> tracker_ptr_; 
 
-    rclcpp::Time last_time_;
-    double dt_;
-
     // Camera center
     cv::Point2f cam_center_;
 
@@ -86,6 +87,10 @@ private:
     std::string chooseTargetID(vector<Armor> &armors);
     Armor chooseTargetArmor(vector<Armor> armors);
     void createTrackers();
+
+    // Debug
+    bool debug_;
+	image_transport::Publisher tracker_img_pub_;
 };
 } // namespace armor_auto_aim
 

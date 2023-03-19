@@ -16,9 +16,6 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include <fmt/format.h>
-#include <fmt/color.h>
-
 #include <glog/logging.h>
 
 // #include "../debug.h"
