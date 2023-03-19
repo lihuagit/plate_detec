@@ -18,8 +18,8 @@
   <depend>image_transport_plugins</depend>
   <depend>visualization_msgs</depend>
   <depend>message_filters</depend>
-  <depend>eigen3</depend>
-  <depend>ceres</depend>
+  <!-- <depend>eigen3</depend> -->
+  <!-- <depend>Ceres</depend> -->
   <depend>cv_bridge</depend>
   <depend>armor_interfaces</depend>
 
