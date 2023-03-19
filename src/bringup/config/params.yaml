@@ -1,44 +1,66 @@
-/camera_node:
+/mv_camera:
   ros__parameters:
-    camera_name: narrow_stereo
-    camera_info_url: package://rm_vision_bringup/config/camera_info.yaml
+    analog_gain: 64
+    camera_info_url: package://mindvision_camera/config/camera_info.yaml
+    camera_name: mv_camera
     frame_id: "camera_optical_frame"
-    # exposure_time: 6000
-    # gain: 32.0
+    exposure_time: 5000
+    flip_image: false
+    gamma: 100
+    rgb_gain:
+      b: 100
+      g: 125
+      r: 175
+    saturation: 100
 
 /armor_detector:
   ros__parameters:
-    min_lightness: 145
+    active: true
+    debug: true
+    detect_color: 1
+    min_lightness: 160
 
     light:
       max_angle: 40.0
-      max_ratio: 0.4
+      max_ratio: 0.55
       min_ratio: 0.1
 
     armor:
       max_angle: 35.0
-      max_center_ratio: 1.6
-      min_center_ratio: 0.4
-      min_light_ratio: 0.6
       max_large_center_distance: 5.0
+      max_small_center_distance: 2.8
       min_large_center_distance: 3.2
-      max_small_center_distance: 3.2
+      min_light_ratio: 0.6
       min_small_center_distance: 0.8
 
     classifier:
-      similarity_threshold: 0.7
+      threshold: 0.7
 
-/armor_processor:
+/armor_tracker_node:
   ros__parameters:
-    target_frame: shooter_link
+    debug: true
+    
+    ekf:
+      Q00: 0.01
+      Q11: 0.1
+      Q22: 0.01
+      Q33: 0.1
+      Q44: 0.01
+      Q55: 0.1
+      R00: 0.05
+      R11: 0.05
+      R22: 0.05
+      
+    lost_count_threshold: 10
+    match_count_threshold: 10
+    max_lost_distance: 0.4
+    max_lost_time: 0.5
+    shoot_v: 15.0
 
-    tracker:
-      max_match_distance: 0.2
-      tracking_threshold: 5
-      lost_threshold: 25
-
-    spin_observer:
-      allow: true
-      allow_following_range: 0.3
-      max_jump_angle: 0.2
-      max_jump_period: 0.8
+/serial_driver:
+  ros__parameters:
+    device_name: /dev/ttyACM0
+    baud_rate: 115200
+    flow_control: none
+    parity: none
+    stop_bits: "1"
