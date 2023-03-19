@@ -12,11 +12,9 @@
 #include <vector>
 
 #include <opencv2/opencv.hpp>
-#include <yaml-cpp/yaml.h>
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#include <glog/logging.h>
 
 // #include "../debug.h"
 

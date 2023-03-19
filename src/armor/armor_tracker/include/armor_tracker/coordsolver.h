@@ -20,7 +20,6 @@
 #include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
-#include <yaml-cpp/yaml.h>
 
 #include "armor_tracker/general.h"
 
@@ -91,8 +90,6 @@ private:
     Eigen::Matrix4d transform_ic;
     // 陀螺仪到相机的变换矩阵 R_c = T_ci * R_i
     Eigen::Matrix4d transform_ci;
-
-    YAML::Node param_node;
 
     const int armor_type_wh_thres = 7;      //大小装甲板长宽比阈值
     // const int bullet_speed = 16;            //TODO:弹速可变
