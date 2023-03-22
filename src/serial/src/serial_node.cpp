@@ -11,7 +11,7 @@
 
 
 SerialDriver::SerialDriver(const rclcpp::NodeOptions & options)
-: Node("serial_driver", options),
+: Node("rm_serial_driver", options),
   owned_ctx_{new IoContext(2)},
   serial_driver_{new drivers::serial_driver::SerialDriver(*owned_ctx_)}
 {
@@ -19,19 +19,17 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions & options)
 
   getParams();
 
-  // try {
-  //   serial_driver_->init_port(device_name_, *device_config_);
-  //   if (!serial_driver_->port()->is_open()) {
-  //     serial_driver_->port()->open();
-  //     receive_thread_ = std::thread(&SerialDriver::receiveData, this);
-  //   }
-  // } catch (const std::exception & ex) {
-  //   RCLCPP_ERROR(
-  //     get_logger(), "Error creating serial port: %s - %s", device_name_.c_str(), ex.what());
-  //   throw ex;
-  // }
-	// double grade[4]={66.51,118.52,61.53,128.54};
-	// int		time[4]={123,456,789,150};
+  try {
+    serial_driver_->init_port(device_name_, *device_config_);
+    if (!serial_driver_->port()->is_open()) {
+      serial_driver_->port()->open();
+      receive_thread_ = std::thread(&SerialDriver::receiveData, this);
+    }
+  } catch (const std::exception & ex) {
+    RCLCPP_ERROR(
+      get_logger(), "Error creating serial port: %s - %s", device_name_.c_str(), ex.what());
+    throw ex;
+  }
 
   // Create Subscription
   target_sub_ = this->create_subscription<armor_interfaces::msg::TargetInfo>(
@@ -95,11 +93,12 @@ void SerialDriver::receiveData()
 
   while (rclcpp::ok()) {
     try {
+    data.resize(50);
     serial_driver_->port()->receive(data);
     // TODO:收到电控数据
+    RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
 
-    } catch (const std::exception & ex) {
-      RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
+    } catch (const std::exception & ex) {      RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
       reopenPort();
     }
   }
