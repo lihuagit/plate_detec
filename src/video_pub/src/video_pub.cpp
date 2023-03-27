@@ -27,9 +27,10 @@ public:
 	VideoPub(const rclcpp::NodeOptions& options) : Node("video_pub", options)
 	{
 		RCLCPP_INFO(this->get_logger(), "Starting VideoPubNode!");
+		video_path_ = this->declare_parameter("video_path", "/video/red_energy.mp4");
 		src_img_pub_ = image_transport::create_publisher(this, "image_raw");
 		auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
-		cap_ = cv::VideoCapture(pkg_path + "/video/blue_1.mp4");
+		cap_ = cv::VideoCapture(pkg_path + video_path_);
 		timer_ = this->create_wall_timer(std::chrono::milliseconds(10), std::bind(&VideoPub::timer_callback, this));
 	}
 
@@ -46,7 +47,7 @@ private:
 			RCLCPP_ERROR(this->get_logger(), "frame is empty");
 			cap_.release();
 			auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
-			cap_ = cv::VideoCapture(pkg_path + "/video/blue_1.mp4");
+			cap_ = cv::VideoCapture(pkg_path + video_path_);
 			cap_ >> frame;
 			// return;
 		}
@@ -57,6 +58,7 @@ private:
 		RCLCPP_INFO(this->get_logger(), "aleady publish a frame");
 	}
 	image_transport::Publisher src_img_pub_;
+	std::string video_path_;
 	rclcpp::TimerBase::SharedPtr timer_;
 	// opencv打开视频
 	cv::VideoCapture cap_;
