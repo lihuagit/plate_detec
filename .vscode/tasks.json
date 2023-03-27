@@ -19,7 +19,7 @@
             "label": "debug",
             "detail": "Build workspace (debug)",
             "type": "shell",
-            "command": "./build.sh",
+            "command": "bash ./build.sh",
             "options": {
                 "env": {
                     "BUILD_TYPE": "Debug"
