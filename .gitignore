@@ -3,4 +3,5 @@ install/*
 log/*
 site/*
 Camera/*
-**/video/*
+**/video/*.mp4
+**/video/*.avi
