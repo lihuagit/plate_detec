@@ -55,7 +55,7 @@ private:
 		auto msg = cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", frame).toImageMsg();
 		msg->header.stamp = this->now();
 		src_img_pub_.publish(*msg);
-		RCLCPP_INFO(this->get_logger(), "aleady publish a frame");
+		// RCLCPP_INFO(this->get_logger(), "aleady publish a frame");
 	}
 	image_transport::Publisher src_img_pub_;
 	std::string video_path_;

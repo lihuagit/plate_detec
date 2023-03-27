@@ -62,7 +62,7 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options)
 void DetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 
 {
-	RCLCPP_INFO(this->get_logger(), "receive image!");
+	// RCLCPP_INFO(this->get_logger(), "receive image!");
 	// 1. 将ROS图像消息转换为OpenCV图像
 	cv::Mat img;
 	try
