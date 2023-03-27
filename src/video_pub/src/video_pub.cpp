@@ -31,7 +31,7 @@ public:
 		src_img_pub_ = image_transport::create_publisher(this, "image_raw");
 		auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
 		cap_ = cv::VideoCapture(pkg_path + video_path_);
-		timer_ = this->create_wall_timer(std::chrono::milliseconds(10), std::bind(&VideoPub::timer_callback, this));
+		timer_ = this->create_wall_timer(std::chrono::milliseconds(50), std::bind(&VideoPub::timer_callback, this));
 	}
 
 private:
