@@ -28,6 +28,7 @@
 
 // other
 #include "energy_detector/detector.h"
+#include "armor_interfaces/msg/armors.hpp"
 
 namespace energy_auto_aim
 {
@@ -45,6 +46,10 @@ private:
 
     // 图像订阅
 	std::shared_ptr<image_transport::Subscriber> img_sub_;
+
+    // TODO: 使用armor下的msg，待抽象出armor和energy共用的msg
+    // 能量机关publisher
+	rclcpp::Publisher<armor_interfaces::msg::Armors>::SharedPtr armors_pub_;
     
     // 监控参数的动态变化
     bool active_;

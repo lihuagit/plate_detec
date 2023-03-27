@@ -23,6 +23,9 @@ DetectorNode::DetectorNode(const rclcpp::NodeOptions& options)
     img_sub_ = std::make_shared<image_transport::Subscriber>(image_transport::create_subscription(this, "/image_raw", 
 				std::bind(&DetectorNode::imageCallback, this, std::placeholders::_1), transport_, rmw_qos_profile_sensor_data));
 
+	// 发布能量机关
+	armors_pub_ = this->create_publisher<armor_interfaces::msg::Armors>("/detector/armors", rclcpp::SensorDataQoS());
+
 	// 初始化能量机关识别器
 	std::string model_path = ament_index_cpp::get_package_share_directory("energy_detector") + "/model/buff.xml";
 	if (!detector_.initModel(model_path))
@@ -79,11 +82,28 @@ void DetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr &
 	std::vector<BuffObject> results;
 	detector_.detect(img, results);
 
-	// 3. 绘制结果
-	cv::Mat final_img = img.clone();
-	detector_.drawResult(final_img, results);
+	// 3. 发布结果
+	armor_interfaces::msg::Armors armors_msg;
+	armors_msg.header = img_msg->header;
+	for (auto & result : results)
+	{
+		armor_interfaces::msg::Armor armor_msg;
+		armor_msg.number = '0' + result.cls;
+		for(auto & point : result.apex){
+			geometry_msgs::msg::Point p;
+			p.x = point.x;
+			p.y = point.y;
+			p.z = 0;
+			armor_msg.positions.push_back(p);
+		}
+		armors_msg.armors.push_back(armor_msg);
+	}
+	armors_pub_->publish(armors_msg);
 
 	if(debug_){
+		// 绘制结果
+		cv::Mat final_img = img.clone();
+		detector_.drawResult(final_img, results);
 		final_img_pub_->publish(cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", final_img).toImageMsg());
 	}
 }

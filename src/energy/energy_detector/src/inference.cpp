@@ -373,6 +373,8 @@ bool BuffDetector::detect(Mat &src,std::vector<BuffObject>& objects)
     {
         return false;
     }
+    // src 源图像， transform_matrix 仿射变换矩阵
+    // 获取的transform_matrix是将src图像变换到网络输入尺寸的仿射变换矩阵,之后的反变换将会用到
     cv::Mat pr_img = scaledResize(src,transfrom_matrix);
 #ifdef SHOW_INPUT
     namedWindow("network_input",0);
