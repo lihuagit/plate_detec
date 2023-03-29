@@ -12,12 +12,18 @@ using namespace std;
 string get_uart_dev_name() {
     FILE *ls = popen("ls /dev/ttyACM* --color=never", "r");
     char name[20] = {0};
-    fscanf(ls, "%s", name);
-    return name;
+    if( fscanf(ls, "%s", name) != EOF ) {
+        pclose(ls);
+        return name;
+    } else {
+        pclose(ls);
+        return name;
+    }
 }
 
 Serial::Serial(int nSpeed, char nEvent, int nBits, int nStop) :
         nSpeed(nSpeed), nEvent(nEvent), nBits(nBits), nStop(nStop) {
+    wait_uart = true;
     if (wait_uart) {
         std::cout<<("Wait for serial be ready!");
         while (!InitPort(nSpeed, nEvent, nBits, nStop));

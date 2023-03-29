@@ -17,7 +17,6 @@
 // user
 #include <armor_interfaces/msg/target_info.hpp>
 #include <serial/cJSON.h>
-#include <serial/../../src/cJSON.c>
 #include <serial/malloc.h>
 #include <serial/serial.h>
 
@@ -37,7 +36,7 @@ private:
 
   void reopenPort();
 
-  Serial serial(115200);
+  std::unique_ptr<Serial> serial_;
 
   rclcpp::Subscription<armor_interfaces::msg::TargetInfo>::SharedPtr target_sub_;
 

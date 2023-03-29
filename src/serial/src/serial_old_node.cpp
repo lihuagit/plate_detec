@@ -17,6 +17,8 @@ SerialOldDriver::SerialOldDriver(const rclcpp::NodeOptions & options)
 
   getParams();
 
+  serial_ = std::make_unique<Serial>(115200);
+
   // Create Subscription
   target_sub_ = this->create_subscription<armor_interfaces::msg::TargetInfo>(
     "/processor/target", rclcpp::SensorDataQoS(),
@@ -50,7 +52,7 @@ void SerialOldDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPt
     // printf("data: %f\n", *(float*)(buff + 1));
     buff[9] = 'e';
 
-    serial.WriteData(buff, sizeof(buff));
+    serial_->WriteData(buff, sizeof(buff));
 
     RCLCPP_INFO(get_logger(), "SerialOldDriver sending data: %c , %f, %f, %c", buff[0], *(float*)(buff + 1), *(float*)(buff + 5), buff[9]);
 
@@ -68,7 +70,7 @@ void SerialOldDriver::receiveData()
   while (rclcpp::ok()) {
     try {
       memset(buffer, 0, sizeof(buffer));
-      serial.ReadData((uint8_t *) buffer, 15);
+      serial_->ReadData((uint8_t *) buffer, 15);
       // TODO:收到电控数据
       RCLCPP_INFO(get_logger(), "SerialOldDriver receiving data: %s", buffer);
     } catch (const std::exception & ex) {
@@ -79,40 +81,40 @@ void SerialOldDriver::receiveData()
 
 void SerialOldDriver::getParams()
 {
-  try {
-    std::string device_name_ = declare_parameter<std::string>("device_name", "");
-  } catch (rclcpp::ParameterTypeException & ex) {
-    RCLCPP_ERROR(get_logger(), "The device name provided was invalid");
-    throw ex;
-  }
+  // try {
+  //   std::string device_name_ = declare_parameter<std::string>("device_name", "");
+  // } catch (rclcpp::ParameterTypeException & ex) {
+  //   RCLCPP_ERROR(get_logger(), "The device name provided was invalid");
+  //   throw ex;
+  // }
 
-  try {
-    int baud_rate = declare_parameter<int>("baud_rate", 0);
-  } catch (rclcpp::ParameterTypeException & ex) {
-    RCLCPP_ERROR(get_logger(), "The baud_rate provided was invalid");
-    throw ex;
-  }
+  // try {
+  //   int baud_rate = declare_parameter<int>("baud_rate", 0);
+  // } catch (rclcpp::ParameterTypeException & ex) {
+  //   RCLCPP_ERROR(get_logger(), "The baud_rate provided was invalid");
+  //   throw ex;
+  // }
 
-  try {
-    const auto fc_string = declare_parameter<std::string>("flow_control", "none");
-  } catch (rclcpp::ParameterTypeException & ex) {
-    RCLCPP_ERROR(get_logger(), "The flow_control provided was invalid");
-    throw ex;
-  }
+  // try {
+  //   const auto fc_string = declare_parameter<std::string>("flow_control", "none");
+  // } catch (rclcpp::ParameterTypeException & ex) {
+  //   RCLCPP_ERROR(get_logger(), "The flow_control provided was invalid");
+  //   throw ex;
+  // }
 
-  try {
-    const auto pt_string = declare_parameter<std::string>("parity", "none");
-  } catch (rclcpp::ParameterTypeException & ex) {
-    RCLCPP_ERROR(get_logger(), "The parity provided was invalid");
-    throw ex;
-  }
+  // try {
+  //   const auto pt_string = declare_parameter<std::string>("parity", "none");
+  // } catch (rclcpp::ParameterTypeException & ex) {
+  //   RCLCPP_ERROR(get_logger(), "The parity provided was invalid");
+  //   throw ex;
+  // }
 
-  try {
-    const auto sb_string = declare_parameter<std::string>("stop_bits", "1");
-  } catch (rclcpp::ParameterTypeException & ex) {
-    RCLCPP_ERROR(get_logger(), "The stop_bits provided was invalid");
-    throw ex;
-  }
+  // try {
+  //   const auto sb_string = declare_parameter<std::string>("stop_bits", "1");
+  // } catch (rclcpp::ParameterTypeException & ex) {
+  //   RCLCPP_ERROR(get_logger(), "The stop_bits provided was invalid");
+  //   throw ex;
+  // }
 }
 
 
