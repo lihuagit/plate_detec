@@ -91,5 +91,7 @@ def generate_launch_description():
     return LaunchDescription([
         mv_camera_detector_container,
         tracker_node,
-        serial_node
+        serial_node,
+        robot_state_publisher,
+        joint_state_publisher,
     ])

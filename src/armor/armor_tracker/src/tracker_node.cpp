@@ -20,10 +20,6 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
     // 弹速
     shoot_v = this->declare_parameter("shoot_v", 15.0);
 
-    // 是否调试
-	debug_ = this->declare_parameter("debug", true);
-	tracker_img_pub_ = image_transport::create_publisher(this, "/tracker_img");
-
     // 位姿解算器
     auto pkg_path = ament_index_cpp::get_package_share_directory("armor_tracker");
     coord_solver.loadParam(pkg_path+"/params/coord_param.yaml", "KE0200110076");
@@ -56,6 +52,23 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
     // Register a callback with tf2_ros::MessageFilter to be called when transforms are available
     tf2_filter_->registerCallback(&ArmorTrackerNode::armorsCallback, this);
 
+    // 是否调试
+	debug_ = this->declare_parameter("debug", false);
+
+    if(debug_) {
+        tracker_img_pub_ = image_transport::create_publisher(this, "/tracker_img");
+    }
+
+	debug_param_sub_ = std::make_shared<rclcpp::ParameterEventHandler>(this);
+	debug_cb_handle_ = debug_param_sub_->add_parameter_callback("debug", [this](const rclcpp::Parameter& p) {
+		debug_ = p.as_bool();
+        if(debug_){
+	        tracker_img_pub_ = image_transport::create_publisher(this, "/tracker_img");
+        }
+        else {
+            tracker_img_pub_.shutdown();
+        }
+	});
 
     // Visualization Marker Publisher
     // See http://wiki.ros.org/rviz/DisplayTypes/Marker
@@ -64,6 +77,13 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
     position_marker_.scale.x = position_marker_.scale.y = position_marker_.scale.z = 0.1;
     position_marker_.color.a = 1.0;
     position_marker_.color.g = 1.0;
+
+    predict_position_marker_.ns = "predict_position";
+    predict_position_marker_.type = visualization_msgs::msg::Marker::SPHERE;
+    predict_position_marker_.scale.x = predict_position_marker_.scale.y = predict_position_marker_.scale.z = 0.1;
+    predict_position_marker_.color.a = 1.0;
+    predict_position_marker_.color.r = 1.0;
+
     velocity_marker_.type = visualization_msgs::msg::Marker::ARROW;
     velocity_marker_.ns = "velocity";
     velocity_marker_.scale.x = 0.03;
@@ -136,7 +156,7 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     tracker_ptr_->update(armors, time_now);
 
     bool is_tracking = false;
-    is_tracking = tracker_ptr_->getTargetArmor(shoot_v);
+    is_tracking = tracker_ptr_->predictTargetArmor(shoot_v);
     if(debug_) RCLCPP_INFO(this->get_logger(), "is_tracking: %d", is_tracking);
 
     Armor target_armor;
@@ -146,25 +166,46 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     else
         return ;
         
-    auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.predict);
-    // auto pitch_offset = geiPitch(target_armor.predict);
-    target_armor.angle = coord_solver.calcYawPitch(target_armor.predict);
+    auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.center3d_predict);
+    // auto pitch_offset = geiPitch(target_armor.center3d_predict);
+    target_armor.angle = coord_solver.calcYawPitch(target_armor.center3d_predict);
     target_armor.angle.y() += pitch_offset;
 
     if(debug_){
-        RCLCPP_INFO(this->get_logger(), "target_armor.center3d_world.x: %f, target_armor.center3d_world.y: %f, target_armor.center3d_world.z: %f", target_armor.center3d_world.x(), target_armor.center3d_world.y(), target_armor.center3d_world.z()); 
-        RCLCPP_INFO(this->get_logger(), "target_armor.predict.x: %f, target_armor.predict.y: %f, target_armor.predict.z: %f", target_armor.predict.x(), target_armor.predict.y(), target_armor.predict.z());
+        RCLCPP_INFO(this->get_logger(), "center3d_world.x: %f, center3d_world.y: %f, center3d_world.z: %f", target_armor.center3d_world.x(), target_armor.center3d_world.y(), target_armor.center3d_world.z()); 
+        RCLCPP_INFO(this->get_logger(), "center3d_predict.x: %f, center3d_predict.y: %f, center3d_predict.z: %f", target_armor.center3d_predict.x(), target_armor.center3d_predict.y(), target_armor.center3d_predict.z());
         RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
-        RCLCPP_INFO(this->get_logger(), "target_armor.angle.x: %f, target_armor.angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
+        RCLCPP_INFO(this->get_logger(), "angle.x: %f, angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
         
         cv::Mat show_mat(1280,1024,CV_8UC3, cv::Scalar(255,255,255));
 		cv::cvtColor(show_mat, show_mat, cv::COLOR_BGR2RGB);
         cv::circle(show_mat, cam_center_, 5, cv::Scalar(255,0,0), -1);
         cv::circle(show_mat, target_armor.center2d, 5, cv::Scalar(0,255,0), -1);
-        cv::circle(show_mat, coord_solver.reproject(target_armor.predict), 5, cv::Scalar(0,0,255), -1);
-        cv::imshow("show_mat", show_mat);
+        cv::circle(show_mat, coord_solver.reproject(target_armor.center3d_predict), 5, cv::Scalar(0,0,255), -1);
+        // cv::imshow("show_mat", show_mat);
 		tracker_img_pub_.publish(cv_bridge::CvImage(armors_msg->header, "rgb8", show_mat).toImageMsg());
     }
+
+// ###############tmp debug################
+    // 每隔1s发布一次目标装甲板信息
+    static auto tmp_last_time = this->now();
+    auto tmp_now_time = this->now();
+    if(tmp_now_time - tmp_last_time > 1.0s){
+        RCLCPP_INFO(this->get_logger(), "###############tmp debug################");
+        RCLCPP_INFO(this->get_logger(), "tmp_now_time: %f, tmp_last_time: %f", tmp_now_time.seconds(), tmp_last_time.seconds());
+        RCLCPP_INFO(this->get_logger(), "center3d_world.x: %f, center3d_world.y: %f, center3d_world.z: %f", target_armor.center3d_world.x(), target_armor.center3d_world.y(), target_armor.center3d_world.z());
+        RCLCPP_INFO(this->get_logger(), "center3d_predict.x: %f, center3d_predict.y: %f, center3d_predict.z: %f", target_armor.center3d_predict.x(), target_armor.center3d_predict.y(), target_armor.center3d_predict.z());
+        RCLCPP_INFO(this->get_logger(), "velocity.x: %f, velocity.y: %f, velocity.z: %f", target_armor.velocity.x(), target_armor.velocity.y(), target_armor.velocity.z());
+        RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
+        RCLCPP_INFO(this->get_logger(), "angle.x: %f, angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
+        RCLCPP_INFO(this->get_logger(), "eulr.x: %f, eulr.y: %f, eulr.z: %f", target_armor.euler.x(), target_armor.euler.y(), target_armor.euler.z());
+        RCLCPP_INFO(this->get_logger(), "eulr2angle.x: %f, eulr2angle.y: %f, eulr2angle.z: %f", target_armor.euler.x() * 180 / CV_PI, target_armor.euler.y() * 180 / CV_PI, target_armor.euler.z() * 180 / CV_PI);
+        RCLCPP_INFO(this->get_logger(), "###############tmp debug################");
+        RCLCPP_INFO(this->get_logger(), " ");
+        RCLCPP_INFO(this->get_logger(), " ");
+        tmp_last_time = tmp_now_time;
+    }
+    publishMarkers(target_armor, armors_msg->header);
     
     // 发布目标装甲板信息
     armor_interfaces::msg::TargetInfo target_info;
@@ -201,31 +242,47 @@ void ArmorTrackerNode::createTrackers(){
 }
 
 
-void ArmorTrackerNode::publishMarkers(const Armor & target_armor, std_msgs::msg::Header& header){
+void ArmorTrackerNode::publishMarkers(const Armor & target_armor, const std_msgs::msg::Header& header){
     position_marker_.header = header;
     velocity_marker_.header = header;
+    predict_position_marker_.header = header;
 
-    if (target_msg.tracking) {
-    position_marker_.action = visualization_msgs::msg::Marker::ADD;
-    position_marker_.pose.position = target_msg.position;
-    position_marker_.color.r = target_msg.suggest_fire ? 0. : 1.;
+    if (target_armor.is_tracking) {
+        position_marker_.action = visualization_msgs::msg::Marker::ADD;
+        position_marker_.pose.position.x = target_armor.center3d_world.x();
+        position_marker_.pose.position.y = target_armor.center3d_world.y();
+        position_marker_.pose.position.z = target_armor.center3d_world.z();
+        position_marker_.color.r = 0.;
 
-    velocity_marker_.action = visualization_msgs::msg::Marker::ADD;
-    velocity_marker_.points.clear();
-    velocity_marker_.points.emplace_back(target_msg.position);
-    geometry_msgs::msg::Point arrow_end = target_msg.position;
-    arrow_end.x += target_msg.velocity.x;
-    arrow_end.y += target_msg.velocity.y;
-    arrow_end.z += target_msg.velocity.z;
-    velocity_marker_.points.emplace_back(arrow_end);
+        predict_position_marker_.action = visualization_msgs::msg::Marker::ADD;
+        predict_position_marker_.pose.position.x = target_armor.center3d_predict.x();
+        predict_position_marker_.pose.position.y = target_armor.center3d_predict.y();
+        predict_position_marker_.pose.position.z = target_armor.center3d_predict.z();
+        predict_position_marker_.color.r = 1.;
+
+        velocity_marker_.action = visualization_msgs::msg::Marker::ADD;
+        velocity_marker_.points.clear();
+        geometry_msgs::msg::Point arrow_start;
+        arrow_start.x = target_armor.center3d_world.x();
+        arrow_start.y = target_armor.center3d_world.y();
+        arrow_start.z = target_armor.center3d_world.z();
+        velocity_marker_.points.emplace_back(arrow_start);
+
+        geometry_msgs::msg::Point arrow_end = arrow_start;
+        arrow_end.x += target_armor.velocity.x();
+        arrow_end.y += target_armor.velocity.y();
+        arrow_end.z += target_armor.velocity.z();
+        velocity_marker_.points.emplace_back(arrow_end);
     } else {
-    position_marker_.action = visualization_msgs::msg::Marker::DELETE;
-    velocity_marker_.action = visualization_msgs::msg::Marker::DELETE;
+        position_marker_.action = visualization_msgs::msg::Marker::DELETE;
+        velocity_marker_.action = visualization_msgs::msg::Marker::DELETE;
+        predict_position_marker_.action = visualization_msgs::msg::Marker::DELETE;
     }
 
     visualization_msgs::msg::MarkerArray marker_array;
     marker_array.markers.emplace_back(position_marker_);
     marker_array.markers.emplace_back(velocity_marker_);
+    marker_array.markers.emplace_back(predict_position_marker_);
     marker_pub_->publish(marker_array);
 }
 

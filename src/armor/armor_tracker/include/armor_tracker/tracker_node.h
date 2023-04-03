@@ -94,6 +94,7 @@ private:
     
     // Visualization marker publisher
     visualization_msgs::msg::Marker position_marker_;
+    visualization_msgs::msg::Marker predict_position_marker_;
     visualization_msgs::msg::Marker velocity_marker_;
     rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 
@@ -109,10 +110,12 @@ private:
     std::string chooseTargetID(vector<Armor> &armors);
     Armor chooseTargetArmor(vector<Armor> armors);
     void createTrackers();
-    void publishMarkers(const Armor & target_armor, std_msgs::msg::Header& header);
+    void publishMarkers(const Armor & target_armor, const std_msgs::msg::Header& header);
 
     // Debug
     bool debug_;
+	std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
+	std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;
 	image_transport::Publisher tracker_img_pub_;
 };
 } // namespace armor_auto_aim

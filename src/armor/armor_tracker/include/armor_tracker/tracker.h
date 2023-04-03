@@ -78,7 +78,7 @@ struct Armor
     Eigen::Vector3d euler;                  // pnp解算出的欧拉角
     Eigen::Vector3d center3d_filter;        // 滤波值
     Eigen::Vector3d center3d_predict;       // 预测值
-    EIgen::Vector3d velocity;               // 速度
+    Eigen::Vector3d velocity;               // 速度
     Eigen::Vector2d angle;                  // pitch yaw
 };
 struct EKF_param {
@@ -111,7 +111,7 @@ public:
     int matched_count_threshold;        //匹配成功次数阈值
 
     void update(const std::vector<Armor> & src, double timestmp);
-    bool getTargetArmor(double shoot_v);
+    bool predictTargetArmor(double shoot_v);
 };
 
 #endif // ARMOR_TRACKER__COORDSOLVER_HPP

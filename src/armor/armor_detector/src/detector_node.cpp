@@ -212,7 +212,6 @@ std::vector<Armor> DetectorNode::detectArmors(const sensor_msgs::msg::Image::Con
 	auto start_time = this->now();
 	// Convert ROS img to cv::Mat
 	auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
-	RCLCPP_INFO(this->get_logger(), "detectArmors img!");
 
 	// Detect armors
 	detector_->min_lightness = get_parameter("min_lightness").as_int();

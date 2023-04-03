@@ -33,11 +33,11 @@ void ArmorTracker::init(const Armor& src, double timestmp){
     // Xe(5, 0) = ekf.Xe(5, 0);
 
     Xe(0, 0) = src.center3d_world(0, 0);
-    // Xe(1, 0) = 0;
+    Xe(1, 0) = 0;
     Xe(2, 0) = src.center3d_world(1, 0);
-    // Xe(3, 0) = 0;
+    Xe(3, 0) = 0;
     Xe(4, 0) = src.center3d_world(2, 0);
-    // Xe(5, 0) = 0;
+    Xe(5, 0) = 0;
 
     ekf.init(Xe);
 }
@@ -50,11 +50,13 @@ void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
     // FIXME: x坐标以及x的速度vx会出现异常值，导致预测值出现异常，未找到原因，暂时强行解决
     if(ekf.Xe(0, 0) > 1000 || ekf.Xe(0, 0) < -1000 || ekf.Xe(1, 0) > 1000 || ekf.Xe(1, 0) < -1000){
         ekf.reset();
-        
         tracker_state = DETECTING;
         matched_count = 0;
         std::cout<<"x or vx is abnormal, reset ekf"<<std::endl;
-        return;
+        // 打印异常值
+        std::cout<<"x: "<<ekf.Xe(0, 0)<<std::endl;
+        std::cout<<"vx: "<<ekf.Xe(1, 0)<<std::endl;
+        // return;
     }
     pre_armor = Armor();
 
@@ -64,6 +66,7 @@ void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
         matched_count = 0;
         std::cout << "timestamp - pre_timestamp: " << abs(timestmp - pre_timestamp) << std::endl;
     }
+    double delta_t = timestmp - pre_timestamp;
     pre_timestamp = timestmp;
 
     // 2. 寻找最优装甲板
@@ -74,7 +77,6 @@ void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
     if( tracker_state == TRACKING || tracker_state == TEMP_LOST){
         // 预测
         Predict predictfunc;
-        double delta_t = timestmp - pre_timestamp;
         pre_timestamp = timestmp;
 
         predictfunc.delta_t = delta_t;      // 设置距离上次预测的时间
@@ -131,9 +133,9 @@ void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
             // std::cout << "Yr: " << Yr.transpose() << std::endl;
 
             // 更新建议击打装甲板
-            pre_armor.predict << Xe(0, 0), Xe(2, 0), Xe(4, 0);
+            pre_armor.center3d_filter << Xe(0, 0), Xe(2, 0), Xe(4, 0);
             pre_armor.velocity << Xe(1, 0), Xe(3, 0), Xe(5, 0);
-            pre_armor.is_tracking = false;
+            pre_armor.is_tracking = true;
 
             // std::cout << "pre_armor.predict: " << pre_armor.predict.transpose() << std::endl;
         }
@@ -181,14 +183,11 @@ void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
  * @return true 获取预测值成功
  * @return false 获取预测值失败
  */
-bool ArmorTracker::getTargetArmor(double shoot_v){
-    if(tracker_state == TRACKING || tracker_state == TEMP_LOST){
+bool ArmorTracker::predictTargetArmor(double shoot_v){
+    if(pre_armor.is_tracking){
         // 预测
         double delta_t = pre_armor.center3d_world.norm() / shoot_v;
-        Eigen::Matrix<double, 6, 1> Xe = ekf.Xe;           // 更新预测器，此时预测器里的是预测值
-        pre_armor.predict << Xe(0, 0), Xe(2, 0), Xe(4, 0);
-        pre_armor.velocity << Xe(1, 0), Xe(3, 0), Xe(5, 0);
-        pre_armor.predict = pre_armor.predict + pre_armor.velocity * delta_t;
+        pre_armor.center3d_predict = pre_armor.center3d_filter + pre_armor.velocity * delta_t;
         return true;
     }
     else
