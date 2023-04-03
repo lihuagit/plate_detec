@@ -26,6 +26,13 @@
 #include <image_transport/publisher.hpp>
 #include <image_transport/subscriber_filter.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include <message_filters/subscriber.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/create_timer_ros.h>
+#include <tf2_ros/message_filter.h>
+#include <tf2_ros/transform_listener.h>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // user
 #include "armor_tracker/tracker.h"
@@ -34,6 +41,7 @@
 #include "armor_tracker/coordsolver.h"
 #include "armor_interfaces/msg/armors.hpp"
 #include "armor_interfaces/msg/target_info.hpp"
+#include "armor_interfaces/msg/target.hpp"
 
 namespace armor_auto_aim
 {
@@ -51,6 +59,7 @@ struct TrackerParams{
 
 class ArmorTrackerNode : public rclcpp::Node
 {
+using tf2_filter = tf2_ros::MessageFilter<armor_interfaces::msg::Armors>;
 public:
     ArmorTrackerNode(const rclcpp::NodeOptions& options);
     // ~ArmorTrackerNode();
@@ -74,7 +83,20 @@ private:
     cv::Point2f cam_center_;
 
     // Detected armors publisher
-    rclcpp::Subscription<armor_interfaces::msg::Armors>::SharedPtr armors_sub_;
+    // rclcpp::Subscription<armor_interfaces::msg::Armors>::SharedPtr armors_sub_;
+    
+    // Subscriber with tf2 message_filter
+    std::string target_frame_;
+    std::shared_ptr<tf2_ros::Buffer> tf2_buffer_;
+    std::shared_ptr<tf2_ros::TransformListener> tf2_listener_;
+    message_filters::Subscriber<armor_interfaces::msg::Armors> armors_sub_;
+    std::shared_ptr<tf2_filter> tf2_filter_;
+    
+    // Visualization marker publisher
+    visualization_msgs::msg::Marker position_marker_;
+    visualization_msgs::msg::Marker velocity_marker_;
+    rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+
 
     // 发布击打目标信息
 	rclcpp::Publisher<armor_interfaces::msg::TargetInfo>::SharedPtr target_info_pub_;
@@ -87,6 +109,7 @@ private:
     std::string chooseTargetID(vector<Armor> &armors);
     Armor chooseTargetArmor(vector<Armor> armors);
     void createTrackers();
+    void publishMarkers(const Armor & target_armor, std_msgs::msg::Header& header);
 
     // Debug
     bool debug_;

@@ -30,6 +30,10 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions & options)
       get_logger(), "Error creating serial port: %s - %s", device_name_.c_str(), ex.what());
     throw ex;
   }
+  
+  // Create Publisher
+  joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
+    "/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
 
   // Create Subscription
   target_sub_ = this->create_subscription<armor_interfaces::msg::TargetInfo>(
@@ -97,8 +101,18 @@ void SerialDriver::receiveData()
     serial_driver_->port()->receive(data);
     // TODO:收到电控数据
     RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
+    double yaw = 0, pitch = 0;
 
-    } catch (const std::exception & ex) {      RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
+    sensor_msgs::msg::JointState joint_state;
+    joint_state.header.stamp = this->now();
+    joint_state.name.push_back("pitch_joint");
+    joint_state.name.push_back("yaw_joint");
+    joint_state.position.push_back(pitch);
+    joint_state.position.push_back(yaw);
+    joint_state_pub_->publish(joint_state);
+
+    } catch (const std::exception & ex) {
+      RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
       reopenPort();
     }
   }

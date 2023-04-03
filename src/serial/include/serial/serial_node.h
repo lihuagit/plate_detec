@@ -14,6 +14,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/subscription.hpp>
 #include <serial_driver/serial_driver.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 
 // user
 #include <armor_interfaces/msg/target_info.hpp>
@@ -39,6 +40,8 @@ private:
   void sendData(armor_interfaces::msg::TargetInfo::SharedPtr msg);
 
   void reopenPort();
+
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
 
   std::unique_ptr<IoContext> owned_ctx_;
   std::string device_name_;

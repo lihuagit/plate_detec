@@ -34,8 +34,45 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 
     target_info_pub_ = this->create_publisher<armor_interfaces::msg::TargetInfo>("/processor/target", rclcpp::SensorDataQoS());
     
-    armors_sub_ = this->create_subscription<armor_interfaces::msg::Armors>(
-        "/detector/armors", rclcpp::SensorDataQoS(),std::bind(&ArmorTrackerNode::armorsCallback, this, std::placeholders::_1));
+    // armors_sub_ = this->create_subscription<armor_interfaces::msg::Armors>(
+    //     "/detector/armors", rclcpp::SensorDataQoS(),std::bind(&ArmorTrackerNode::armorsCallback, this, std::placeholders::_1));
+
+    
+    // Subscriber with tf2 message_filter
+    // tf2 relevant
+    tf2_buffer_ = std::make_shared<tf2_ros::Buffer>(this->get_clock());
+    // Create the timer interface before call to waitForTransform,
+    // to avoid a tf2_ros::CreateTimerInterfaceException exception
+    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
+        this->get_node_base_interface(), this->get_node_timers_interface());
+    tf2_buffer_->setCreateTimerInterface(timer_interface);
+    tf2_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf2_buffer_);
+    // subscriber and filter
+    armors_sub_.subscribe(this, "/detector/armors", rmw_qos_profile_sensor_data);
+    target_frame_ = this->declare_parameter("target_frame", "shooter_link");
+    tf2_filter_ = std::make_shared<tf2_filter>(
+        armors_sub_, *tf2_buffer_, target_frame_, 10, this->get_node_logging_interface(),
+        this->get_node_clock_interface(), std::chrono::duration<int>(1));
+    // Register a callback with tf2_ros::MessageFilter to be called when transforms are available
+    tf2_filter_->registerCallback(&ArmorTrackerNode::armorsCallback, this);
+
+
+    // Visualization Marker Publisher
+    // See http://wiki.ros.org/rviz/DisplayTypes/Marker
+    position_marker_.ns = "position";
+    position_marker_.type = visualization_msgs::msg::Marker::SPHERE;
+    position_marker_.scale.x = position_marker_.scale.y = position_marker_.scale.z = 0.1;
+    position_marker_.color.a = 1.0;
+    position_marker_.color.g = 1.0;
+    velocity_marker_.type = visualization_msgs::msg::Marker::ARROW;
+    velocity_marker_.ns = "velocity";
+    velocity_marker_.scale.x = 0.03;
+    velocity_marker_.scale.y = 0.05;
+    velocity_marker_.color.a = 1.0;
+    velocity_marker_.color.b = 1.0;
+    marker_pub_ =
+        this->create_publisher<visualization_msgs::msg::MarkerArray>("/processor/marker", 10);
+
 }
 
 void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstSharedPtr armors_msg){
@@ -77,16 +114,30 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
         armor.center3d_world = pnp_result.armor_world;
         armor.center3d_cam = pnp_result.armor_cam;
         armor.euler = pnp_result.euler;
+        
+        geometry_msgs::msg::PointStamped ps;
+        ps.header = armors_msg->header;
+        ps.point.x = armor.center3d_cam[0];
+        ps.point.y = armor.center3d_cam[1];
+        ps.point.z = armor.center3d_cam[2];
+        
+        try {
+            geometry_msgs::msg::Point pt = tf2_buffer_->transform(ps, target_frame_).point;
+            armor.center3d_world[0] = pt.x;
+            armor.center3d_world[1] = pt.y;
+            armor.center3d_world[2] = pt.z;
+        } catch (const tf2::ExtrapolationException & ex) {
+            RCLCPP_ERROR(get_logger(), "Error while transforming %s", ex.what());
+            return ;
+        }
     }
 
     // Tracker
-    bool is_tracking = false;
     tracker_ptr_->update(armors, time_now);
 
-    // double delta_t = ;
-    Eigen::Vector3d target_center3d;
-    is_tracking = tracker_ptr_->getTargetArmor(shoot_v, target_center3d);
-    RCLCPP_INFO(this->get_logger(), "is_tracking: %d", is_tracking);
+    bool is_tracking = false;
+    is_tracking = tracker_ptr_->getTargetArmor(shoot_v);
+    if(debug_) RCLCPP_INFO(this->get_logger(), "is_tracking: %d", is_tracking);
 
     Armor target_armor;
 
@@ -95,7 +146,7 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     else
         return ;
         
-    auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.center3d_world);
+    auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.predict);
     // auto pitch_offset = geiPitch(target_armor.predict);
     target_armor.angle = coord_solver.calcYawPitch(target_armor.predict);
     target_armor.angle.y() += pitch_offset;
@@ -147,6 +198,35 @@ void ArmorTrackerNode::createTrackers(){
     int match_count_threshold_ = this->declare_parameter("match_count_threshold", 10);
     // ArmorTracker
     tracker_ptr_ = std::make_unique<ArmorTracker>(param, max_lost_time_, max_lost_distance_, lost_count_threshold_, match_count_threshold_);
+}
+
+
+void ArmorTrackerNode::publishMarkers(const Armor & target_armor, std_msgs::msg::Header& header){
+    position_marker_.header = header;
+    velocity_marker_.header = header;
+
+    if (target_msg.tracking) {
+    position_marker_.action = visualization_msgs::msg::Marker::ADD;
+    position_marker_.pose.position = target_msg.position;
+    position_marker_.color.r = target_msg.suggest_fire ? 0. : 1.;
+
+    velocity_marker_.action = visualization_msgs::msg::Marker::ADD;
+    velocity_marker_.points.clear();
+    velocity_marker_.points.emplace_back(target_msg.position);
+    geometry_msgs::msg::Point arrow_end = target_msg.position;
+    arrow_end.x += target_msg.velocity.x;
+    arrow_end.y += target_msg.velocity.y;
+    arrow_end.z += target_msg.velocity.z;
+    velocity_marker_.points.emplace_back(arrow_end);
+    } else {
+    position_marker_.action = visualization_msgs::msg::Marker::DELETE;
+    velocity_marker_.action = visualization_msgs::msg::Marker::DELETE;
+    }
+
+    visualization_msgs::msg::MarkerArray marker_array;
+    marker_array.markers.emplace_back(position_marker_);
+    marker_array.markers.emplace_back(velocity_marker_);
+    marker_pub_->publish(marker_array);
 }
 
 /**

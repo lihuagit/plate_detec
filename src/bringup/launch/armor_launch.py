@@ -1,5 +1,9 @@
 from launch_ros.descriptions import ComposableNode
 from launch_ros.actions import ComposableNodeContainer, Node
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import Command, PythonExpression
+from launch.conditions import IfCondition
 from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
 
@@ -22,6 +26,10 @@ def generate_launch_description():
         tracker_params = yaml.safe_load(f)['/armor_tracker_node']['ros__parameters']
     with open(params_file, 'r') as f:
         serial_params = yaml.safe_load(f)['/serial_driver']['ros__parameters']
+
+    # robot_description
+    robot_description = Command(['xacro ', os.path.join(
+        get_package_share_directory('rm_description'), 'urdf', 'gimbal.urdf.xacro')])
         
     detector_node = ComposableNode(
         package='armor_detector',
@@ -67,6 +75,18 @@ def generate_launch_description():
         parameters=[serial_params],
     )
     
+    robot_state_publisher = Node(
+        package='robot_state_publisher',
+        executable='robot_state_publisher',
+        parameters=[{'robot_description': robot_description,
+                     'publish_frequency': 1000.0}]
+    )
+
+    joint_state_publisher = Node(
+        package='joint_state_publisher',
+        executable='joint_state_publisher',
+        parameters=[{'rate': 600}],
+    )
 
     return LaunchDescription([
         mv_camera_detector_container,

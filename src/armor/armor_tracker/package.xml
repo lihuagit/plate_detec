@@ -18,6 +18,7 @@
   <depend>image_transport_plugins</depend>
   <depend>visualization_msgs</depend>
   <depend>message_filters</depend>
+  <depend>tf2_geometry_msgs</depend>
   <depend>eigen</depend>
   <depend>cv_bridge</depend>
   <depend>armor_interfaces</depend>
