@@ -63,25 +63,38 @@ SerialDriver::~SerialDriver()
 void SerialDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPtr msg)
 {
   try {
-    // std::vector<uint8_t> data;
+     std::vector<uint8_t> data;
     //TODO:自定义发送格式
-
+    
     /* 创建一个JSON数据对象(链表头结点) */
     
-    cJSON* cjson_send = cJSON_CreateObject();
     char* str = NULL;
     
-    // cJSON_AddStringToObject(cjson_send, "yaw", "mculover666");
+    //"date":[x,y];
+    cJSON* cjson_date=cJSON_CreateArray();
+    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.x));
+    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.y));
 
-    cJSON_AddNumberToObject(cjson_send, "yaw", msg->euler.x);
+    //dat
+    cJSON* cjson_dat=cJSON_CreateObject();
+    cJSON_AddItemToObject(cjson_dat,"date",cjson_date);
+    cJSON_AddStringToObject(cjson_dat,"mode","visual");
 
-    cJSON_AddNumberToObject(cjson_send, "pitch", msg->euler.y);
+    //send
+    cJSON* cjson_send=cJSON_CreateObject();
+    cJSON_AddStringToObject(cjson_send,"cmd","ctr_mode");
+
+    cJSON_AddItemToObject(cjson_send,"dat",cjson_dat);
 
     str = cJSON_PrintUnformatted(cjson_send);
-
-    // serial_driver_->port()->send(data);
-    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s\\n", str);
-
+    int str_len = strlen(str);
+    for(int i=0;i<str_len;i++)
+    {
+      data.push_back(str[i]);
+    }
+    //serial_driver_->port()->send(data);
+    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s", data.data());
+    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %d", str_len);
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
     reopenPort();
