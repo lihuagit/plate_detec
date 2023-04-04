@@ -1,6 +1,6 @@
 /mv_camera:
   ros__parameters:
-    analog_gain: 64
+    analog_gain: 20
     camera_info_url: package://mindvision_camera/config/camera_info.yaml
     camera_name: mv_camera
     frame_id: "camera_optical_frame"

@@ -144,8 +144,8 @@ void SerialDriver::receiveData()
       }
 
       // TODO:收到电控数据
-      // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
-      // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
+      RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
+      RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
 
       if(isnan(imu_yaw) || isnan(imu_pitch)) continue;
 
