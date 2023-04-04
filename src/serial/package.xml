@@ -12,6 +12,7 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>serial_driver</depend>
+  <depend>sensor_msgs</depend>
   <depend>armor_interfaces</depend>
 
   <test_depend>ament_lint_auto</test_depend>

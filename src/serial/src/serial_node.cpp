@@ -97,19 +97,52 @@ void SerialDriver::receiveData()
 
   while (rclcpp::ok()) {
     try {
-    data.resize(50);
-    serial_driver_->port()->receive(data);
-    // TODO:收到电控数据
-    RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
-    double yaw = 0, pitch = 0;
+      data.resize(200);
+      int rec_len = serial_driver_->port()->receive(data);
 
-    sensor_msgs::msg::JointState joint_state;
-    joint_state.header.stamp = this->now();
-    joint_state.name.push_back("pitch_joint");
-    joint_state.name.push_back("yaw_joint");
-    joint_state.position.push_back(pitch);
-    joint_state.position.push_back(yaw);
-    joint_state_pub_->publish(joint_state);
+      if(rec_len >= 150) continue;
+
+      data[rec_len-1] = '\0';
+
+      double imu_yaw = 0, imu_pitch = 0;
+
+      // 解析json
+      cJSON *root = cJSON_Parse((char*)data.data());
+      if(!root)
+      {
+        RCLCPP_INFO(get_logger(), "Error before: [%s]",cJSON_GetErrorPtr());
+        continue;
+      }
+      else
+      {
+        cJSON *dat = cJSON_GetObjectItem(root, "dat");
+        if(!dat)
+        {
+          RCLCPP_INFO(get_logger(), "Error before: [%s]",cJSON_GetErrorPtr());
+          continue;
+        }
+        else
+        {
+          imu_yaw = cJSON_GetObjectItem(dat, "imu_yaw")->valuedouble;
+          imu_pitch = cJSON_GetObjectItem(dat, "imu_pitch")->valuedouble;
+          RCLCPP_INFO(get_logger(), "imu_yaw: %f", imu_yaw);
+          RCLCPP_INFO(get_logger(), "imu_pitch: %f", imu_pitch);
+        }
+      }
+
+      // TODO:收到电控数据
+      // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
+      // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
+
+      if(isnan(imu_yaw) || isnan(imu_pitch)) continue;
+
+      sensor_msgs::msg::JointState joint_state;
+      joint_state.header.stamp = this->now();
+      joint_state.name.push_back("pitch_joint");
+      joint_state.name.push_back("yaw_joint");
+      joint_state.position.push_back(imu_pitch);
+      joint_state.position.push_back(imu_yaw);
+      joint_state_pub_->publish(joint_state);
 
     } catch (const std::exception & ex) {
       RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());

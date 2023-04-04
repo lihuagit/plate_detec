@@ -1,8 +1,8 @@
 from launch_ros.descriptions import ComposableNode
-from launch_ros.actions import ComposableNodeContainer, Node
+from launch_ros.actions import ComposableNodeContainer, Node, DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import Command, PythonExpression
+from launch.substitutions import Command, PythonExpression, LaunchConfiguration
 from launch.conditions import IfCondition
 from launch import LaunchDescription
 from ament_index_python.packages import get_package_share_directory
@@ -12,6 +12,13 @@ import yaml
 
 
 def generate_launch_description():
+
+    use_serial = LaunchConfiguration('use_serial')
+    
+    declare_use_serial_cmd = DeclareLaunchArgument(
+        'use_serial',
+        default_value='True',
+        description='Whether use serial port')
 
     # params file path
     params_file = os.path.join(
@@ -73,6 +80,7 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[serial_params],
+        condition=IfCondition(use_serial)
     )
     
     robot_state_publisher = Node(
@@ -86,9 +94,12 @@ def generate_launch_description():
         package='joint_state_publisher',
         executable='joint_state_publisher',
         parameters=[{'rate': 600}],
+        condition=IfCondition(PythonExpression(["not ", use_serial]))
     )
 
     return LaunchDescription([
+        declare_use_serial_cmd,
+        
         mv_camera_detector_container,
         tracker_node,
         serial_node,
