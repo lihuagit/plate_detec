@@ -205,14 +205,15 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
         RCLCPP_INFO(this->get_logger(), " ");
         tmp_last_time = tmp_now_time;
     }
-    publishMarkers(target_armor, armors_msg->header);
     
     // 发布目标装甲板信息
     armor_interfaces::msg::TargetInfo target_info;
     target_info.header = armors_msg->header;
+    target_info.header.frame_id = target_frame_;
     target_info.id = target_armor.key[0];
     target_info.euler.x = target_armor.angle.x();
     target_info.euler.y = target_armor.angle.y();
+    publishMarkers(target_armor, target_info.header);
     target_info_pub_->publish(target_info);
 }
 
