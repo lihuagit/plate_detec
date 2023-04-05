@@ -18,6 +18,10 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions & options)
   RCLCPP_INFO(get_logger(), "Start SerialDriver!");
 
   getParams();
+  
+  // Create Publisher
+  joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
+    "/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
 
   try {
     serial_driver_->init_port(device_name_, *device_config_);
@@ -30,10 +34,6 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions & options)
       get_logger(), "Error creating serial port: %s - %s", device_name_.c_str(), ex.what());
     throw ex;
   }
-  
-  // Create Publisher
-  joint_state_pub_ = this->create_publisher<sensor_msgs::msg::JointState>(
-    "/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
 
   // Create Subscription
   target_sub_ = this->create_subscription<armor_interfaces::msg::TargetInfo>(
@@ -92,7 +92,9 @@ void SerialDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPtr m
     {
       data.push_back(str[i]);
     }
-    //serial_driver_->port()->send(data);
+    data.push_back('\n');
+
+    // serial_driver_->port()->send(data);
     RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s", data.data());
     RCLCPP_INFO(get_logger(), "SerialDriver sending data: %d", str_len);
   } catch (const std::exception & ex) {
@@ -138,24 +140,28 @@ void SerialDriver::receiveData()
         {
           imu_yaw = cJSON_GetObjectItem(dat, "imu_yaw")->valuedouble;
           imu_pitch = cJSON_GetObjectItem(dat, "imu_pitch")->valuedouble;
-          RCLCPP_INFO(get_logger(), "imu_yaw: %f", imu_yaw);
-          RCLCPP_INFO(get_logger(), "imu_pitch: %f", imu_pitch);
+          // RCLCPP_INFO(get_logger(), "imu_yaw: %f", imu_yaw);
+          //  RCLCPP_INFO(get_logger(), "imu_pitch: %f", imu_pitch);
         }
       }
 
       // TODO:收到电控数据
-      RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
-      RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
+      // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
+      // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
 
       if(isnan(imu_yaw) || isnan(imu_pitch)) continue;
-
-      sensor_msgs::msg::JointState joint_state;
-      joint_state.header.stamp = this->now();
-      joint_state.name.push_back("pitch_joint");
-      joint_state.name.push_back("yaw_joint");
-      joint_state.position.push_back(imu_pitch);
-      joint_state.position.push_back(imu_yaw);
-      joint_state_pub_->publish(joint_state);
+    try
+      {
+        sensor_msgs::msg::JointState joint_state;
+        joint_state.header.stamp = this->now();
+        joint_state.name.push_back("pitch_joint");
+        joint_state.name.push_back("yaw_joint");
+        joint_state.position.push_back(imu_pitch);
+        joint_state.position.push_back(imu_yaw);
+        joint_state_pub_->publish(joint_state);
+      }catch (const std::exception & ex) {
+        RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
+      }
 
     } catch (const std::exception & ex) {
       RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
@@ -163,6 +169,7 @@ void SerialDriver::receiveData()
     }
   }
 }
+
 
 /**
  * @brief 重启串口
