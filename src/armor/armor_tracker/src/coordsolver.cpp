@@ -295,7 +295,7 @@ Eigen::Vector2d CoordSolver::staticAngleOffset(Eigen::Vector2d& angle)
  */
 double CoordSolver::calcYaw(Eigen::Vector3d& xyz)
 {
-  return atan2(xyz[0], xyz[2]) * 180 / CV_PI;
+  return atan2(xyz[2], xyz[0]) * 180 / CV_PI;
 }
 
 /**

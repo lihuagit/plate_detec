@@ -211,8 +211,8 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     target_info.header = armors_msg->header;
     target_info.header.frame_id = target_frame_;
     target_info.id = target_armor.key[0];
-    target_info.euler.x = target_armor.angle.x();
-    target_info.euler.y = target_armor.angle.y();
+    target_info.euler.x = target_armor.angle.x() * M_PI / 180.0;
+    target_info.euler.y = target_armor.angle.y() * M_PI / 180.0;
     publishMarkers(target_armor, target_info.header);
     target_info_pub_->publish(target_info);
 }
