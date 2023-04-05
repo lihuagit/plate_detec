@@ -1,6 +1,6 @@
 /mv_camera:
   ros__parameters:
-    analog_gain: 20
+    analog_gain: 15
     camera_info_url: package://mindvision_camera/config/camera_info.yaml
     camera_name: mv_camera
     frame_id: "camera_optical_frame"
@@ -10,7 +10,7 @@
     rgb_gain:
       b: 100
       g: 125
-      r: 175
+      r: 160
     saturation: 100
 
 /armor_detector:
@@ -18,7 +18,7 @@
     active: true
     debug: true
     detect_color: 1
-    min_lightness: 160
+    min_lightness: 250
 
     light:
       max_angle: 40.0

@@ -11,7 +11,7 @@ def generate_launch_description():
         'rm_description'), 'launch', 'view_model.rviz')
 
     robot_description = Command(['xacro ', os.path.join(
-        get_package_share_directory('rm_description'), 'urdf', 'gimbal.urdf.xacro')])
+        get_package_share_directory('rm_description'), 'urdf', 'gimbal_b3.urdf.xacro')])
 
     robot_state_publisher = Node(
         package='robot_state_publisher',

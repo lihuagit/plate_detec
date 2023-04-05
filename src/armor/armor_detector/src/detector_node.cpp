@@ -122,7 +122,7 @@ void DetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr& 
 		}
 		else{
 			fps = fps_tmp;
-			RCLCPP_INFO(this->get_logger(), "fps: %d", fps);
+			// RCLCPP_INFO(this->get_logger(), "fps: %d", fps);
 			fps_tmp = 0;
 			last_time = start_time;
 		}
@@ -239,7 +239,7 @@ std::vector<Armor> DetectorNode::detectArmors(const sensor_msgs::msg::Image::Con
 	{
 		auto final_time = this->now();
 		auto latency = (final_time - start_time).seconds() * 1000;
-		RCLCPP_INFO_STREAM(this->get_logger(), "detectArmors used: " << latency << "ms");
+		// RCLCPP_INFO_STREAM(this->get_logger(), "detectArmors used: " << latency << "ms");
 		cv::putText(img, "Latency: " + std::to_string(latency) + "ms", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1.0,
 					cv::Scalar(0, 255, 0), 2);
 		cv::putText(img, "pfs: " + std::to_string(fps) , cv::Point(10, 80), cv::FONT_HERSHEY_SIMPLEX, 1.0,

@@ -72,8 +72,8 @@ void SerialDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPtr m
     
     //"date":[x,y];
     cJSON* cjson_date=cJSON_CreateArray();
-    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.x));
     cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.y));
+    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.x));
 
     //dat
     cJSON* cjson_dat=cJSON_CreateObject();
@@ -94,7 +94,7 @@ void SerialDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPtr m
     }
     data.push_back('\n');
 
-    // serial_driver_->port()->send(data);
+    serial_driver_->port()->send(data);
     RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s", data.data());
     RCLCPP_INFO(get_logger(), "SerialDriver sending data: %d", str_len);
   } catch (const std::exception & ex) {

@@ -37,7 +37,7 @@ def generate_launch_description():
 
     # robot_description
     robot_description = Command(['xacro ', os.path.join(
-        get_package_share_directory('rm_description'), 'urdf', 'gimbal.urdf.xacro')])
+        get_package_share_directory('rm_description'), 'urdf', 'gimbal_b3.urdf.xacro')])
         
     detector_node = ComposableNode(
         package='armor_detector',
@@ -103,7 +103,7 @@ def generate_launch_description():
         
         mv_camera_detector_container,
         tracker_node,
-        serial_node,
+        # serial_node,
         robot_state_publisher,
         joint_state_publisher,
     ])

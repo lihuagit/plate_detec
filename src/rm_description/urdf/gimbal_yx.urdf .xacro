@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
-<robot name="gimbal"
+<robot name="gimbal_yx"
   xmlns:xacro="http://ros.org/wiki/xacro">
 
   <link name="base_link"/>
@@ -59,7 +59,8 @@
   </link>
 
   <joint name="pitch_joint" type="revolute">
-    <origin xyz="0.0032818 0 0.097945" rpy="0 0 0" />
+    <origin xyz="0.0032818 0 0.142" rpy="0 0 0" />
+    <!-- <origin xyz="0.0032818 0 0.097945" rpy="0 0 0" /> -->
     <parent link="yaw_link" />
     <child link="pitch_link" />
     <axis xyz="0 1 0" />
@@ -98,7 +99,8 @@
   </link>
 
   <joint name="camera_base_joint" type="fixed">
-    <origin xyz="0.088 0.0 0.0585" rpy="0 0 0" />
+    <origin xyz="0.01331 0.0 0.1222" rpy="0 0 0" />
+    <!-- <origin xyz="0.088 0.0 0.0585" rpy="0 0 0" /> -->
     <parent link="pitch_link" />
     <child link="camera_base_link" />
     <axis xyz="0 0 0" />
