@@ -6,6 +6,10 @@
  * @date 2023-03-04
  * 
  */
+
+#ifndef SERIAL__SERIAL_NODE_H_
+#define SERIAL__SERIAL_NODE_H_
+
 // c++
 #include <vector>
 
@@ -15,15 +19,14 @@
 #include <rclcpp/subscription.hpp>
 #include <serial_driver/serial_driver.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 // user
 #include "auto_aim_interfaces/msg/target.hpp"
 #include <serial/cJSON.h>
 #include <serial/../../src/cJSON.c>
 #include <serial/malloc.h>
-
-#define CMD_NAME_LENGTH 100
-#define MAX_CMD_NUM 10
+#include <serial/coordsolver.h>
 
 class SerialDriver : public rclcpp::Node
 {
@@ -41,6 +44,8 @@ private:
 
   void reopenPort();
 
+  std::unique_ptr<CoordSolver> coord_solver_;
+
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
 
   std::unique_ptr<IoContext> owned_ctx_;
@@ -49,6 +54,19 @@ private:
   std::unique_ptr<drivers::serial_driver::SerialDriver> serial_driver_;
 
   rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr target_sub_;
+  
 
   std::thread receive_thread_;
+
+  double shoot_speed_;
+  double shoot_delay_;
+
+  bool is_track;
+  bool is_pitch_gain;
+  
+  // Visualization marker publisher
+  visualization_msgs::msg::Marker position_marker_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 };
+
+#endif  // SERIAL__SERIAL_NODE_H_
