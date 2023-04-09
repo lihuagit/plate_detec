@@ -1,21 +1,14 @@
 /mv_camera:
   ros__parameters:
     analog_gain: 15
-    camera_info_url: package://mindvision_camera/config/camera_info.yaml
+    # camera_info_url: package://mindvision_camera/config/camera_info.yaml
     camera_name: mv_camera
-    exposure_time: 5000
+    frame_id: "camera_optical_frame"
+    exposure_time: 10000
     flip_image: false
     gamma: 100
-    image_raw.format: jpeg
-    image_raw.jpeg_quality: 95
-    image_raw.png_level: 3
-    qos_overrides./parameter_events.publisher.depth: 1000
-    qos_overrides./parameter_events.publisher.durability: volatile
-    qos_overrides./parameter_events.publisher.history: keep_last
-    qos_overrides./parameter_events.publisher.reliability: reliable
-    rgb_gain.b: 100
-    rgb_gain.g: 125
-    rgb_gain.r: 160
+    rgb_gain:
+      b: 100
+      g: 125
+      r: 160
     saturation: 100
-    use_sensor_data_qos: false
-    use_sim_time: false
