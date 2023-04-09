@@ -72,8 +72,8 @@ void SerialDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPtr m
     
     //"date":[x,y];
     cJSON* cjson_date=cJSON_CreateArray();
-    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.y));
-    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(msg->euler.x));
+    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(-(msg->euler.x)));
+    cJSON_AddItemToArray(cjson_date,cJSON_CreateNumber(-(msg->euler.y)));
 
     //dat
     cJSON* cjson_dat=cJSON_CreateObject();
@@ -94,9 +94,15 @@ void SerialDriver::sendData(const armor_interfaces::msg::TargetInfo::SharedPtr m
     }
     data.push_back('\n');
 
-    serial_driver_->port()->send(data);
-    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s", data.data());
-    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %d", str_len);
+    // if(data.size()>100) 
+    {
+        serial_driver_->port()->send(data);
+        // auto final_time = this->now();
+        // auto latency = (final_time - start_time).seconds() * 1000;
+		    //  RCLCPP_INFO_STREAM(this->get_logger(), "detectArmors used: " << latency << "ms");
+        RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s", data.data());
+        RCLCPP_INFO(get_logger(), "SerialDriver sending data: %d", str_len);
+    }
   } catch (const std::exception & ex) {
     RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
     reopenPort();
@@ -147,7 +153,7 @@ void SerialDriver::receiveData()
 
       // TODO:收到电控数据
       // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
-      // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
+      // // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
 
       if(isnan(imu_yaw) || isnan(imu_pitch)) continue;
     try
