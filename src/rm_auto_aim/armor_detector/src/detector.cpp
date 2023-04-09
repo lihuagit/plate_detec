@@ -60,8 +60,8 @@ void Detector::drawResults(cv::Mat & img)
 {
   // Draw Lights
   for (const auto & light : lights_) {
-    cv::circle(img, light.top, 3, cv::Scalar(255, 255, 255), 1);
-    cv::circle(img, light.bottom, 3, cv::Scalar(255, 255, 255), 1);
+    cv::circle(img, light.top, 3, cv::Scalar(255, 0, 255), 3);
+    cv::circle(img, light.bottom, 3, cv::Scalar(255, 0, 255), 3);
     auto line_color = light.color == RED ? cv::Scalar(255, 255, 0) : cv::Scalar(255, 0, 255);
     cv::line(img, light.top, light.bottom, line_color, 1);
   }
@@ -191,7 +191,7 @@ bool Detector::containLight(
     if (
       bounding_rect.contains(test_light.top) || bounding_rect.contains(test_light.bottom) ||
       bounding_rect.contains(test_light.center)) {
-      return true;
+      // return true;
     }
   }
 

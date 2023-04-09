@@ -54,7 +54,7 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
       armor.left_light.bottom, armor.left_light.top, armor.right_light.top,
       armor.right_light.bottom};
 
-    const int top_light_y = (warp_height - light_length) / 2 - 1;
+    const int top_light_y = (warp_height - light_length) / 2 + 2;
     const int bottom_light_y = top_light_y + light_length;
     const int warp_width = armor.armor_type == SMALL ? small_armor_width : large_armor_width;
     cv::Point2f target_vertices[4] = {
@@ -70,6 +70,8 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
     // Get ROI
     number_image =
       number_image(cv::Rect(cv::Point((warp_width - roi_size.width) / 2, 0), roi_size));
+
+    number_image *= 10;
 
     // Binarize
     cv::cvtColor(number_image, number_image, cv::COLOR_RGB2GRAY);
@@ -113,14 +115,16 @@ void NumberClassifier::classify(std::vector<Armor> & armors)
 
     std::stringstream result_ss;
     result_ss << armor.number << ": " << std::fixed << std::setprecision(1)
-              << armor.confidence * 100.0 << "%";
+              << armor.confidence * 100.0 << "% | " << ((armor.armor_type == LARGE));
     armor.classfication_result = result_ss.str();
   }
+
+  // return ;
 
   armors.erase(
     std::remove_if(
       armors.begin(), armors.end(),
-      [this](const Armor & armor) {
+      [this](Armor & armor) {
         if (armor.confidence < threshold || armor.number == "Negative") {
           return true;
         }
@@ -130,7 +134,9 @@ void NumberClassifier::classify(std::vector<Armor> & armors)
           mismatch_armor_type =
             armor.number == "Outpost" || armor.number == "2" || armor.number == "Guard";
         } else if (armor.armor_type == SMALL) {
-          mismatch_armor_type = armor.number == "1" || armor.number == "Base";
+          // mismatch_armor_type = armor.number == "1" || armor.number == "Base";
+          if(armor.number == "1" || armor.number == "Base")
+            armor.armor_type = LARGE;
         }
         return mismatch_armor_type;
       }),
