@@ -201,7 +201,8 @@ PnPInfo CoordSolver::pnp(const std::vector<Point2f>& points_pic, const Eigen::Ma
   Eigen::Vector3d coord_camera;
 
   solvePnP(points_world, points_pic, intrinsic, dis_coeff, rvec, tvec, false, method);
-
+  // std::cout<<points_pic<<std::endl;
+  // std::cout<<tvec<<std::endl;
   PnPInfo result;
   // Pc = R * Pw + T
   Rodrigues(rvec, rmat);
@@ -210,6 +211,7 @@ PnPInfo CoordSolver::pnp(const std::vector<Point2f>& points_pic, const Eigen::Ma
   if (points_pic.size() == 4)
   {
     result.armor_cam = tvec_eigen;
+    // result.armor_world = result.armor_cam;
     result.armor_world = camToWorld(result.armor_cam, rmat_imu);
     result.euler = rotationMatrixToEulerAngles(rmat_eigen);
   }
@@ -295,7 +297,7 @@ Eigen::Vector2d CoordSolver::staticAngleOffset(Eigen::Vector2d& angle)
  */
 double CoordSolver::calcYaw(Eigen::Vector3d& xyz)
 {
-  return atan2(xyz[2], xyz[0]) * 180 / CV_PI;
+  return atan2(xyz[1], xyz[0]) * 180 / CV_PI;
 }
 
 /**
@@ -306,7 +308,7 @@ double CoordSolver::calcYaw(Eigen::Vector3d& xyz)
  */
 double CoordSolver::calcPitch(Eigen::Vector3d& xyz)
 {
-  return -(atan2(xyz[1], sqrt(xyz[0] * xyz[0] + xyz[2] * xyz[2])) * 180 / CV_PI);
+  return -(atan2(xyz[2], sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1])) * 180 / CV_PI);
   // return (atan2(xyz[1], sqrt(xyz[0] * xyz[0] + xyz[2] * xyz[2])) * 180 / CV_PI);
 }
 
@@ -331,6 +333,7 @@ Eigen::Vector2d CoordSolver::calcYawPitch(Eigen::Vector3d& xyz)
  */
 double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d& xyz)
 {
+  // bullet_speed = 20;
   // TODO:根据陀螺仪安装位置调整距离求解方式
   //降维，坐标系Y轴以垂直向上为正方向
   auto dist_vertical = xyz[2];
@@ -386,7 +389,6 @@ double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d& xyz)
     }
     else
     {
-      vertical_tmp += error;
       // xyz_tmp[1] -= error;
       pitch_new = atan(vertical_tmp / dist_horizonal) * 180 / CV_PI;
     }
