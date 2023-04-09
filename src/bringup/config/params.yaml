@@ -22,7 +22,7 @@
 
     light:
       max_angle: 40.0
-      max_ratio: 0.4
+      max_ratio: 0.6
       min_ratio: 0.05
 
     armor:
@@ -31,8 +31,8 @@
       min_center_ratio: 0.4
       min_light_ratio: 0.6
       max_large_center_distance: 5.0
-      min_large_center_distance: 3.2
-      max_small_center_distance: 3.2
+      min_large_center_distance: 2.8
+      max_small_center_distance: 2.8
       min_small_center_distance: 0.8
 
 
@@ -60,10 +60,10 @@
     parity: none
     stop_bits: "1"
     
-    is_pitch_gain: false
-    is_track: false
+    is_pitch_gain: true
+    is_track: true
     shoot_delay: 0.2
-    shoot_speed: 15.0
+    shoot_speed: 14.4
     
     # 龙格库塔法求解落点的迭代次数
     R_K_iter: 50
