@@ -29,6 +29,10 @@ To build from source, clone the latest version from this repository into your co
 
 标定教程可参考 https://navigation.ros.org/tutorials/docs/camera_calibration.html
 
+
+ros2 run camera_calibration cameracalibrator --size 6x10 --square 0.0195  image:=/image_raw -p camera:=/mv_camera
+
+
 参数意义请参考 http://wiki.ros.org/camera_calibration
 
 标定后的相机参数会被存放在 `/tmp/calibrationdata.tar.gz`
