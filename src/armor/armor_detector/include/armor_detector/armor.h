@@ -70,7 +70,6 @@ struct Light : public cv::RotatedRect
     double width;                 // 灯条的宽度
     float tilt_angle;             // 灯条的倾斜角度
 };
-
 /**
  * @brief 自定义的装甲板，由两个灯条类构造而成
  */

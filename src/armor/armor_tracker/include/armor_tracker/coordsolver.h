@@ -91,7 +91,7 @@ private:
     // 陀螺仪到相机的变换矩阵 R_c = T_ci * R_i
     Eigen::Matrix4d transform_ci;
 
-    const int armor_type_wh_thres = 7;      //大小装甲板长宽比阈值
+    const int armor_type_wh_thres = 3.2;      //大小装甲板长宽比阈值
     // const int bullet_speed = 16;            //TODO:弹速可变
     const double k = 0.0389;                //25°C,1atm,小弹丸
     // const double k = 0.0111;                //25°C,1atm,大弹丸
