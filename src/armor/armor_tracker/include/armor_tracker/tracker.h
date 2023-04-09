@@ -101,6 +101,7 @@ public:
     void init(const Armor& src, double timestmp);
     Armor pre_armor;                    //上一次装甲板
     double pre_timestamp;               //上次装甲板时间戳
+    EKF_param ekf_param;                //ekf 参数
 
     double max_lost_time;               //最大丢失时间
     double max_lost_distance;           //最大距离
