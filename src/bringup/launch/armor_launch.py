@@ -75,7 +75,7 @@ def generate_launch_description():
     )
     
     serial_node = Node(
-        package='serial',
+        package='lc_serial',
         executable='serial_node',
         namespace='',
         output='screen',
