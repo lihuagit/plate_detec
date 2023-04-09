@@ -84,9 +84,15 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       cam_info_sub_.reset();
     });
 
-  img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-    "/image_raw", rclcpp::SensorDataQoS(),
-    std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
+
+  std::string transport_ = this->declare_parameter("subscribe_compressed", false) ? "compressed" : "raw";
+  img_sub_ = std::make_shared<image_transport::Subscriber>(image_transport::create_subscription(
+    this, "/image_raw", std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1),
+    transport_, rmw_qos_profile_sensor_data));
+    
+  // img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
+  //   "/image_raw", rclcpp::SensorDataQoS(),
+  //   std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
 }
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
@@ -205,7 +211,7 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 
   auto final_time = this->now();
   auto latency = (final_time - img_msg->header.stamp).seconds() * 1000;
-  RCLCPP_INFO_STREAM(this->get_logger(), "Latency: " << latency << "ms");
+  // RCLCPP_INFO_STREAM(this->get_logger(), "Latency: " << latency << "ms");
 
   // Publish debug info
   if (debug_) {
