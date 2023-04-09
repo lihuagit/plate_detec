@@ -2,7 +2,7 @@
   ros__parameters:
     debug: true
     detect_color: 0
-    min_lightness: 120
+    min_lightness: 140
     classifier_threshold: 0.9
 
     light:
@@ -22,7 +22,7 @@
 
 /armor_processor:
   ros__parameters:
-    target_frame: odom
+    target_frame: shooter_link
 
     kf:
       #   xc    yc    zc    yaw   vxc   vyc   vzc   vyaw  r

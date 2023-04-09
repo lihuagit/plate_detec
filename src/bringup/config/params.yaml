@@ -4,7 +4,7 @@
     camera_info_url: package://mindvision_camera/config/camera_info.yaml
     camera_name: mv_camera
     frame_id: "camera_optical_frame"
-    exposure_time: 5000
+    exposure_time: 10000
     flip_image: false
     gamma: 100
     rgb_gain:
@@ -15,52 +15,59 @@
 
 /armor_detector:
   ros__parameters:
-    active: true
     debug: true
-    detect_color: 1
-    min_lightness: 250
+    detect_color: 0
+    min_lightness: 140
+    classifier_threshold: 0.7
 
     light:
       max_angle: 40.0
-      max_ratio: 0.55
-      min_ratio: 0.1
+      max_ratio: 0.4
+      min_ratio: 0.05
 
     armor:
       max_angle: 35.0
-      max_large_center_distance: 5.0
-      max_small_center_distance: 2.8
-      min_large_center_distance: 3.2
+      max_center_ratio: 1.6
+      min_center_ratio: 0.4
       min_light_ratio: 0.6
+      max_large_center_distance: 5.0
+      min_large_center_distance: 3.2
+      max_small_center_distance: 3.2
       min_small_center_distance: 0.8
 
-    classifier:
-      threshold: 0.7
 
-/armor_tracker_node:
+/armor_processor:
   ros__parameters:
-    debug: true
-    
-    ekf:
-      Q00: 0.01
-      Q11: 0.1
-      Q22: 0.01
-      Q33: 0.1
-      Q44: 0.01
-      Q55: 0.1
-      R00: 0.05
-      R11: 0.05
-      R22: 0.05
-      
-    lost_count_threshold: 10
-    match_count_threshold: 10
-    max_lost_distance: 0.4
-    max_lost_time: 0.5
-    shoot_v: 15.0
+    target_frame: shooter_link
 
-/serial_driver:
+    kf:
+      #   xc    yc    zc    yaw   vxc   vyc   vzc   vyaw  r
+      q: [1e-2, 1e-2, 1e-2, 2e-2, 5e-2, 5e-2, 1e-4, 4e-2, 1e-3]
+      #   xa    ya    za    yaw
+      r: [1e-1, 1e-1, 1e-1, 2e-1]
+
+    tracker:
+      max_match_distance: 0.2
+      tracking_threshold: 5
+      lost_threshold: 25
+
+
+/lc_serial_driver:
   ros__parameters:
     device_name: /dev/ttyACM0
     baud_rate: 115200
     flow_control: none
     parity: none
     stop_bits: "1"
+    
+    is_pitch_gain: false
+    is_track: false
+    shoot_delay: 0.2
+    shoot_speed: 15.0
+    
+    # 龙格库塔法求解落点的迭代次数
+    R_K_iter: 50
+    # 使用迭代法求解pitch补偿的最大迭代次数
+    max_iter: 10
+    # 停止迭代的最小误差(单位m)
+    stop_error: 0.001
