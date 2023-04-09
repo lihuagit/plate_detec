@@ -15,9 +15,12 @@ ArmorTracker::ArmorTracker( EKF_param param, double max_lost_time_, double max_l
                             : max_lost_time(max_lost_time_), max_lost_distance(max_lost_distance_),
                             lost_count_threshold(lost_count_threshold_), matched_count_threshold(match_count_threshold_)
 {
-    // 初始化EKF
     ekf.Q = param.Q;
     ekf.R = param.R;
+    ekf_param = param;
+    // // 初始化EKF
+    // ekf.Q = ekf_param.Q;
+    // ekf.R = ekf_param.R;
     tracker_state = DETECTING;
 }
 
@@ -49,13 +52,18 @@ void ArmorTracker::init(const Armor& src, double timestmp){
 void ArmorTracker::update(const std::vector<Armor> & src, double timestmp){
     // FIXME: x坐标以及x的速度vx会出现异常值，导致预测值出现异常，未找到原因，暂时强行解决
     if(ekf.Xe(0, 0) > 1000 || ekf.Xe(0, 0) < -1000 || ekf.Xe(1, 0) > 1000 || ekf.Xe(1, 0) < -1000){
-        ekf.reset();
+        // ekf.reset();
         tracker_state = DETECTING;
         matched_count = 0;
-        std::cout<<"x or vx is abnormal, reset ekf"<<std::endl;
-        // 打印异常值
+        // std::cout<<"x or vx is abnormal, reset ekf"<<std::endl;
+        // // 打印异常值
         std::cout<<"x: "<<ekf.Xe(0, 0)<<std::endl;
         std::cout<<"vx: "<<ekf.Xe(1, 0)<<std::endl;
+        // 重启ekf
+        ekf = AdaptiveEKF<6, 3>();
+        ekf.Q = ekf_param.Q;
+        ekf.R = ekf_param.R;
+
         // return;
     }
     pre_armor = Armor();
@@ -187,6 +195,7 @@ bool ArmorTracker::predictTargetArmor(double shoot_v){
     if(pre_armor.is_tracking){
         // 预测
         double delta_t = pre_armor.center3d_world.norm() / shoot_v;
+        delta_t += 0.2;
         pre_armor.center3d_predict = pre_armor.center3d_filter + pre_armor.velocity * delta_t;
         return true;
     }

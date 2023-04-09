@@ -17,6 +17,9 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
 {
     RCLCPP_INFO(this->get_logger(), "Starting armor_tracker_node!");
 
+    // tracker
+    createTrackers();
+
     // 弹速
     shoot_v = this->declare_parameter("shoot_v", 15.0);
 
@@ -26,7 +29,7 @@ ArmorTrackerNode::ArmorTrackerNode(const rclcpp::NodeOptions& options)
     coord_solver.bullet_speed = shoot_v;
 
     // tracker
-    createTrackers();
+    // createTrackers();
 
     target_info_pub_ = this->create_publisher<armor_interfaces::msg::TargetInfo>("/processor/target", rclcpp::SensorDataQoS());
     
@@ -161,19 +164,28 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
 
     Armor target_armor;
 
-    if(is_tracking)
-        target_armor = tracker_ptr_->pre_armor;
-    else
-        return ;
+    //  if(is_tracking)
+         target_armor = tracker_ptr_->pre_armor;
+    //  else
+    //      return ;
+
+      target_armor.center3d_predict = target_armor.center3d_world;
         
     auto pitch_offset = coord_solver.dynamicCalcPitchOffset(target_armor.center3d_predict);
     // auto pitch_offset = geiPitch(target_armor.center3d_predict);
     target_armor.angle = coord_solver.calcYawPitch(target_armor.center3d_predict);
+    // pitch_offset = 0;
+    // if(target_armor.center3d_predict[0]< 2.5)
+    //     pitch_offset = pitch_offset*0.2;
+    // else if(target_armor.center3d_predict[0] < 3)
+    //     pitch_offset = pitch_offset*0.4;
+    // else if(target_armor.center3d_predict[0] < 4.5)
+        // pitch_offset = pitch_offset*0.8;
+    
     target_armor.angle.y() += pitch_offset;
 
     if(debug_){
         RCLCPP_INFO(this->get_logger(), "center3d_world.x: %f, center3d_world.y: %f, center3d_world.z: %f", target_armor.center3d_world.x(), target_armor.center3d_world.y(), target_armor.center3d_world.z()); 
-        RCLCPP_INFO(this->get_logger(), "center3d_predict.x: %f, center3d_predict.y: %f, center3d_predict.z: %f", target_armor.center3d_predict.x(), target_armor.center3d_predict.y(), target_armor.center3d_predict.z());
         RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
         RCLCPP_INFO(this->get_logger(), "angle.x: %f, angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
         
@@ -192,14 +204,16 @@ void ArmorTrackerNode::armorsCallback(armor_interfaces::msg::Armors::ConstShared
     auto tmp_now_time = this->now();
     if(tmp_now_time - tmp_last_time > 1.0s){
         RCLCPP_INFO(this->get_logger(), "###############tmp debug################");
-        RCLCPP_INFO(this->get_logger(), "tmp_now_time: %f, tmp_last_time: %f", tmp_now_time.seconds(), tmp_last_time.seconds());
+       // RCLCPP_INFO(this->get_logger(), "tmp_now_time: %f, tmp_last_time: %f", tmp_now_time.seconds(), tmp_last_time.seconds());
         RCLCPP_INFO(this->get_logger(), "center3d_world.x: %f, center3d_world.y: %f, center3d_world.z: %f", target_armor.center3d_world.x(), target_armor.center3d_world.y(), target_armor.center3d_world.z());
         RCLCPP_INFO(this->get_logger(), "center3d_predict.x: %f, center3d_predict.y: %f, center3d_predict.z: %f", target_armor.center3d_predict.x(), target_armor.center3d_predict.y(), target_armor.center3d_predict.z());
-        RCLCPP_INFO(this->get_logger(), "velocity.x: %f, velocity.y: %f, velocity.z: %f", target_armor.velocity.x(), target_armor.velocity.y(), target_armor.velocity.z());
+        RCLCPP_INFO(this->get_logger(), "center3d_cam.x: %f, center3d_cam.y: %f, center3d_cam.z: %f", target_armor.center3d_cam.x(), target_armor.center3d_cam.y(), target_armor.center3d_cam.z());
+        
+        //RCLCPP_INFO(this->get_logger(), "velocity.x: %f, velocity.y: %f, velocity.z: %f", target_armor.velocity.x(), target_armor.velocity.y(), target_armor.velocity.z());
         RCLCPP_INFO(this->get_logger(), "pitch_offset: %f", pitch_offset);
         RCLCPP_INFO(this->get_logger(), "angle.x: %f, angle.y: %f", target_armor.angle.x(), target_armor.angle.y());
-        RCLCPP_INFO(this->get_logger(), "eulr.x: %f, eulr.y: %f, eulr.z: %f", target_armor.euler.x(), target_armor.euler.y(), target_armor.euler.z());
-        RCLCPP_INFO(this->get_logger(), "eulr2angle.x: %f, eulr2angle.y: %f, eulr2angle.z: %f", target_armor.euler.x() * 180 / CV_PI, target_armor.euler.y() * 180 / CV_PI, target_armor.euler.z() * 180 / CV_PI);
+        //RCLCPP_INFO(this->get_logger(), "eulr.x: %f, eulr.y: %f, eulr.z: %f", target_armor.euler.x(), target_armor.euler.y(), target_armor.euler.z());
+        //RCLCPP_INFO(this->get_logger(), "eulr2angle.x: %f, eulr2angle.y: %f, eulr2angle.z: %f", target_armor.euler.x() * 180 / CV_PI, target_armor.euler.y() * 180 / CV_PI, target_armor.euler.z() * 180 / CV_PI);
         RCLCPP_INFO(this->get_logger(), "###############tmp debug################");
         RCLCPP_INFO(this->get_logger(), " ");
         RCLCPP_INFO(this->get_logger(), " ");
@@ -232,7 +246,6 @@ void ArmorTrackerNode::createTrackers(){
     param.R(0, 0) = this->declare_parameter("ekf.R00", 0.05);
     param.R(1, 1) = this->declare_parameter("ekf.R11", 0.05);
     param.R(2, 2) = this->declare_parameter("ekf.R22", 0.05);
-
 
     double max_lost_time_ = this->declare_parameter("max_lost_time", 0.5);
     double max_lost_distance_ = this->declare_parameter("max_lost_distance", 0.4);
@@ -363,8 +376,6 @@ bool ArmorTrackerNode::updateSpinScore()
         }
         
         if (spin_status != UNKNOWN)
-            (*score).second.spin_score = 0.978 * (*score).second.spin_score - 1 * abs((*score).second.spin_score) / (*score).second.spin_score;
-        else
             (*score).second.spin_score = 0.997 * (*score).second.spin_score - 1 * abs((*score).second.spin_score) / (*score).second.spin_score;
         
         //当小于该值时移除该元素
