@@ -1,8 +1,7 @@
 from launch_ros.descriptions import ComposableNode
 from launch_ros.actions import ComposableNodeContainer, Node 
 
-from launch.actions import IncludeLaunchDescription,DeclareLaunchArgument
-from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.actions import DeclareLaunchArgument
 from launch.substitutions import Command, PythonExpression, LaunchConfiguration
 from launch.conditions import IfCondition
 from launch import LaunchDescription
@@ -31,9 +30,9 @@ def generate_launch_description():
     with open(params_file, 'r') as f:
         detector_params = yaml.safe_load(f)['/armor_detector']['ros__parameters']
     with open(params_file, 'r') as f:
-        tracker_params = yaml.safe_load(f)['/armor_tracker_node']['ros__parameters']
+        processor_params = yaml.safe_load(f)['/armor_processor']['ros__parameters']
     with open(params_file, 'r') as f:
-        serial_params = yaml.safe_load(f)['/serial_driver']['ros__parameters']
+        serial_params = yaml.safe_load(f)['/lc_serial_driver']['ros__parameters']
 
     # robot_description
     robot_description = Command(['xacro ', os.path.join(
@@ -41,10 +40,11 @@ def generate_launch_description():
         
     detector_node = ComposableNode(
         package='armor_detector',
-        plugin='armor_auto_aim::DetectorNode',
+        plugin='rm_auto_aim::ArmorDetectorNode',
         name='armor_detector',
         parameters=[detector_params],
-        extra_arguments=[{'use_intra_process_comms': True}]
+        extra_arguments=[{'use_intra_process_comms': True}],
+        # arguments=['--ros-args', '--log-level', 'armor_detector:=DEBUG'],
     )
 
     mv_camera_detector_container = ComposableNodeContainer(
@@ -65,13 +65,13 @@ def generate_launch_description():
         output='screen',
     )
     
-    tracker_node = Node(
-        package='armor_tracker',
-        executable='armor_tracker_node',
-        namespace='',
+    processor_node = Node(
+        package='armor_processor',
+        executable='armor_processor_node',
         output='screen',
         emulate_tty=True,
-        parameters=[tracker_params],
+        parameters=[processor_params],
+        arguments=['--ros-args', '--log-level', 'armor_processor:=DEBUG'],
     )
     
     serial_node = Node(
@@ -102,8 +102,8 @@ def generate_launch_description():
         declare_use_serial_cmd,
         
         mv_camera_detector_container,
-        tracker_node,
-        # serial_node,
+        processor_node,
+        serial_node,
         robot_state_publisher,
         joint_state_publisher,
     ])

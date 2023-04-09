@@ -21,7 +21,7 @@ def generate_launch_description():
     # with open(params_file, 'r') as f:
     #     tracker_params = yaml.safe_load(f)['/armor_tracker_node']['ros__parameters']
     # with open(params_file, 'r') as f:
-    #     serial_params = yaml.safe_load(f)['/serial_driver']['ros__parameters']
+    #     serial_params = yaml.safe_load(f)['/lc_serial_driver']['ros__parameters']
         
     detector_node = ComposableNode(
         package='energy_detector',

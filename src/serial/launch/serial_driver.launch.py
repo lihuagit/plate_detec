@@ -10,7 +10,7 @@ def generate_launch_description():
     config = os.path.join(
         get_package_share_directory('serial'), 'config', 'serial_driver.yaml')
     with open(config, 'r') as f:
-        serial_params = yaml.safe_load(f)['/serial_driver']['ros__parameters']
+        serial_params = yaml.safe_load(f)['/lc_serial_driver']['ros__parameters']
 
     rm_serial_driver_node = Node(
         package='serial',
