@@ -1,0 +1,19 @@
+/lc_serial_driver:
+  ros__parameters:
+    device_name: /dev/ttyACM0
+    baud_rate: 115200
+    flow_control: none
+    parity: none
+    stop_bits: "1"
+    
+    is_pitch_gain: true
+    is_track: true
+    shoot_delay: 0.2
+    shoot_speed: 15.0
+    
+    # 龙格库塔法求解落点的迭代次数
+    R_K_iter: 50
+    # 使用迭代法求解pitch补偿的最大迭代次数
+    max_iter: 10
+    # 停止迭代的最小误差(单位m)
+    stop_error: 0.001

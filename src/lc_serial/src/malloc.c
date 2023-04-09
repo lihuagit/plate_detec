@@ -1,4 +1,4 @@
-#include "serial/malloc.h"	   
+#include "lc_serial/malloc.h"	   
 
 // 来自根总的代码，这里只是做了一些修改
 // 因为源代码是应用于单片机，这里进行一些改动得以使用，原来的部分进行了注释

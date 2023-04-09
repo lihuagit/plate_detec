@@ -7,7 +7,7 @@
  *
  */
 
-#include "serial/serial_node.h"
+#include "lc_serial/serial_node.h"
 
 SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   : Node("lc_serial_driver", options)
@@ -19,8 +19,8 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   getParams();
 
   // 是否预测、是否pitch增益
-  is_track = declare_parameter("is_track", false);
-  is_pitch_gain = declare_parameter("is_pitch_gain", false);
+  is_track = declare_parameter("is_track", true);
+  is_pitch_gain = declare_parameter("is_pitch_gain", true);
   shoot_speed_ = declare_parameter("shoot_speed", 15.0);
   shoot_delay_ = declare_parameter("shoot_delay", 0.2);
 
@@ -45,7 +45,7 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   }
   catch (const std::exception& ex)
   {
-    RCLCPP_ERROR(get_logger(), "Error creating serial port: %s - %s", device_name_.c_str(), ex.what());
+    RCLCPP_ERROR(get_logger(), "Error creating lc_serial port: %s - %s", device_name_.c_str(), ex.what());
     throw ex;
   }
   
@@ -58,7 +58,7 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   position_marker_.color.r = 1.0;
   position_marker_.color.b = 1.0;
   marker_pub_ =
-    this->create_publisher<visualization_msgs::msg::MarkerArray>("/serial/marker", 10);
+    this->create_publisher<visualization_msgs::msg::MarkerArray>("/lc_serial/marker", 10);
 
   // Create Subscription
   target_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
@@ -108,7 +108,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     double z2 = msg->z_2;
     double vxc = msg->velocity.x, vyc = msg->velocity.y, vzc = msg->velocity.z;
     double v_yaw = msg->v_yaw;
-
+    yc-=0.1;
     // 整车坐标
     geometry_msgs::msg::Point point_c;
     point_c.x = xc;
@@ -171,26 +171,46 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
       point_a.x = point_c_pre.x - r * cos(tmp_yaw);
       point_a.y = point_c_pre.y - r * sin(tmp_yaw);
       point_a.z = use_1 ? zc : z2;
-      points_a.push_back(point_a);
+      points_a_pre.push_back(point_a);
       use_1 = !use_1;
     }
 
     // 匹配最优装甲板，面朝摄像头为最优，通过yaw_pre来判断
-    double use_yaw = yaw;
-    if(is_track)
-      use_yaw = yaw_pre;
+    // double use_yaw = yaw;
+    // if(is_track)
+    //   use_yaw = yaw_pre;
+    // int index = 0;
+    // double min = 1000;
+    // for (size_t i = 0; i < 4; i++)
+    // {
+    //   double tmp_yaw = use_yaw + i * M_PI_2;
+    //   double tmp = fabs(tmp_yaw);
+    //   if (tmp < min)
+    //   {
+    //     min = tmp;
+    //     index = i;
+    //   }
+    // }
+
     int index = 0;
     double min = 1000;
     for (size_t i = 0; i < 4; i++)
     {
-      double tmp_yaw = use_yaw + i * M_PI_2;
-      double tmp = fabs(tmp_yaw);
+      double x_p = points_a[i].x;
+      double y_p = points_a[i].y;
+      if(is_track){
+        x_p = points_a_pre[i].x;
+        y_p = points_a_pre[i].y;
+      }
+      double tmp_dis = sqrt(x_p*x_p + y_p*y_p);
+      double tmp = fabs(tmp_dis);
       if (tmp < min)
       {
         min = tmp;
         index = i;
       }
     }
+
 
     // 对最优装甲板进行位姿解算
     double x, y, z;
@@ -206,13 +226,13 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
 
     // 位姿解算
     double send_pitch = atan2(z, sqrt(x * x + y * y));
-    double send_yaw = atan2(y, x);
+    double send_yaw = -atan2(y, x);
 
     // 对抬枪角度进行增益
     if(is_pitch_gain){
       coord_solver_->bullet_speed = shoot_speed_;
       double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(Eigen::Vector3d(x, y, z));
-      send_pitch += send_pitch_gain;
+      send_pitch -= send_pitch_gain;
     }
 
     // 发布marker
@@ -380,7 +400,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
 
     try
     {
-      device_name_ = declare_parameter<std::string>("device_name", "");
+      device_name_ = declare_parameter<std::string>("device_name", "/dev/ttyACM0");
     }
     catch (rclcpp::ParameterTypeException& ex)
     {

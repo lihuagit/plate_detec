@@ -30,8 +30,8 @@
 #include <float.h>
 #include <limits.h>
 #include <ctype.h>
-#include "serial/cJSON.h"
-#include "serial/malloc.h"
+#include "lc_serial/cJSON.h"
+#include "lc_serial/malloc.h"
 
 static const char *ep;
 

@@ -7,7 +7,7 @@
  * 
  */
 
-#include "serial/coordsolver.h"
+#include "lc_serial/coordsolver.h"
 
 
 /**
