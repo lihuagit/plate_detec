@@ -17,7 +17,7 @@
 #include <sensor_msgs/msg/joint_state.hpp>
 
 // user
-#include <armor_interfaces/msg/target_info.hpp>
+#include "auto_aim_interfaces/msg/target.hpp"
 #include <serial/cJSON.h>
 #include <serial/../../src/cJSON.c>
 #include <serial/malloc.h>
@@ -37,7 +37,7 @@ private:
 
   void receiveData();
 
-  void sendData(armor_interfaces::msg::TargetInfo::SharedPtr msg);
+  void sendData(auto_aim_interfaces::msg::Target::SharedPtr msg);
 
   void reopenPort();
 
@@ -48,7 +48,7 @@ private:
   std::unique_ptr<drivers::serial_driver::SerialPortConfig> device_config_;
   std::unique_ptr<drivers::serial_driver::SerialDriver> serial_driver_;
 
-  rclcpp::Subscription<armor_interfaces::msg::TargetInfo>::SharedPtr target_sub_;
+  rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr target_sub_;
 
   std::thread receive_thread_;
 };

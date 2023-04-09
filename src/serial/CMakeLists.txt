@@ -28,11 +28,6 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTABLE ${PROJECT_NAME}_node
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN SerialOldDriver
-  EXECUTABLE serial_old_node
-)
-
 ## Install ##
 ament_auto_package(
   INSTALL_TO_SHARE
