@@ -12,6 +12,7 @@
 
 // c++
 #include <vector>
+#include <cmath>
 
 // ros
 #include <rclcpp/publisher.hpp>
@@ -24,7 +25,7 @@
 // user
 #include "auto_aim_interfaces/msg/target.hpp"
 #include <lc_serial/cJSON.h>
-#include <lc_serial/../../src/cJSON.c>
+// #include <lc_serial/../../src/cJSON.c>
 #include <lc_serial/malloc.h>
 #include <lc_serial/coordsolver.h>
 // #include <lc_serial/../../src/coordsolver.cpp>

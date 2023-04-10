@@ -90,6 +90,9 @@ void ArmorProcessorNode::armorsCallback(
   for (auto & armor : armors_msg->armors) {
     geometry_msgs::msg::PoseStamped ps;
     ps.header = armors_msg->header;
+    RCLCPP_INFO(get_logger(), "ps.x:%lf", armor.pose.position.x);
+    RCLCPP_INFO(get_logger(), "ps.y:%lf", armor.pose.position.y);
+    RCLCPP_INFO(get_logger(), "ps.z:%lf", armor.pose.position.z);
     ps.pose = armor.pose;
     try {
       armor.pose = tf2_buffer_->transform(ps, target_frame_).pose;

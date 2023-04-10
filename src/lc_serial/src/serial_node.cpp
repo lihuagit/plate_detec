@@ -232,7 +232,13 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     if(is_pitch_gain){
       coord_solver_->bullet_speed = shoot_speed_;
       double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(Eigen::Vector3d(x, y, z));
-      send_pitch -= send_pitch_gain;
+      send_pitch_gain = send_pitch_gain * M_PI / 180.0;
+      RCLCPP_INFO(get_logger(), "send_pitch:%lf", send_pitch);
+      RCLCPP_INFO(get_logger(), "send_pitch_gain:%lf", send_pitch_gain);
+      RCLCPP_INFO(get_logger(), "x:%lf", x);
+      RCLCPP_INFO(get_logger(), "y:%lf", y);
+      RCLCPP_INFO(get_logger(), "z:%lf", z);
+      send_pitch += send_pitch_gain;
     }
 
     // 发布marker
@@ -335,8 +341,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
         // TODO:收到电控数据
         // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
         // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
-
-        if (isnan(imu_yaw) || isnan(imu_pitch))
+        if (std::isnan(imu_yaw) || std::isnan(imu_pitch))
           continue;
         try
         {

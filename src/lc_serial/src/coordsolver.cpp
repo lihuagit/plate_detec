@@ -58,7 +58,7 @@ Eigen::Vector2d CoordSolver::calcYawPitch(Eigen::Vector3d &xyz)
  * @param xyz 坐标
  * @return double Pitch偏移量
  */
-inline double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d xyz)
+double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d xyz)
 {
 	//TODO:根据陀螺仪安装位置调整距离求解方式
 	//降维，坐标系Y轴以垂直向上为正方向
