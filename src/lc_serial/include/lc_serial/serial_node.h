@@ -62,6 +62,10 @@ private:
 
   double shoot_speed_;
   double shoot_delay_;
+  double shoot_delay_spin_;
+  double x_gain;
+  double y_gain;
+  double pitch_gain_;
 
   bool is_track;
   bool is_pitch_gain;

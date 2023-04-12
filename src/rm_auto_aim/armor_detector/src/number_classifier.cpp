@@ -71,7 +71,7 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
     number_image =
       number_image(cv::Rect(cv::Point((warp_width - roi_size.width) / 2, 0), roi_size));
 
-    number_image *= 10;
+    // number_image *= 10;
 
     // Binarize
     cv::cvtColor(number_image, number_image, cv::COLOR_RGB2GRAY);

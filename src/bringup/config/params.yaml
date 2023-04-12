@@ -62,8 +62,14 @@
     
     is_pitch_gain: true
     is_track: true
-    shoot_delay: 0.2
+    shoot_delay: 0.4
+    shoot_delay_spin_: 0.2
     shoot_speed: 14.4
+
+    x_gain: 0.0
+    y_gain: 0.0
+    pitch_gain_: 0.15
+    
     
     # 龙格库塔法求解落点的迭代次数
     R_K_iter: 50

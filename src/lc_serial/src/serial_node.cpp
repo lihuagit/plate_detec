@@ -22,7 +22,13 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   is_track = declare_parameter("is_track", true);
   is_pitch_gain = declare_parameter("is_pitch_gain", true);
   shoot_speed_ = declare_parameter("shoot_speed", 15.0);
-  shoot_delay_ = declare_parameter("shoot_delay", 0.2);
+  shoot_delay_ = declare_parameter("shoot_delay", 0.4);
+  shoot_delay_spin_ = declare_parameter("shoot_delay_spin_", 0.2);
+
+
+  x_gain = declare_parameter("x_gain", 0.0);
+  y_gain = declare_parameter("y_gain", 0.0);
+  pitch_gain_ = declare_parameter("pitch_gain_", 1.0);
 
   // 构造位姿解算器, 定义参数
   int max_iter = declare_parameter("max_iter", 10);
@@ -57,6 +63,7 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   position_marker_.color.a = 1.0;
   position_marker_.color.r = 1.0;
   position_marker_.color.b = 1.0;
+  
   marker_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("/lc_serial/marker", 10);
 
@@ -70,7 +77,7 @@ SerialDriver::~SerialDriver()
   if (receive_thread_.joinable())
   {
     receive_thread_.join();
-  }
+  }SerialDriver sending data: 
 
   if (serial_driver_->port()->is_open())
   {
@@ -108,7 +115,14 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     double z2 = msg->z_2;
     double vxc = msg->velocity.x, vyc = msg->velocity.y, vzc = msg->velocity.z;
     double v_yaw = msg->v_yaw;
-    yc-=0.1;
+
+    x_gain = get_parameter("x_gain").as_double();
+    y_gain = get_parameter("y_gain").as_double();
+
+    xc += x_gain;
+    yc += y_gain;
+
+    // yc-=0.3;
     // 整车坐标
     geometry_msgs::msg::Point point_c;
     point_c.x = xc;
@@ -147,6 +161,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     // 子弹飞行速度为 15m/s, 发单延迟为 0.1s
     shoot_speed_ = get_parameter("shoot_speed").as_double();
     shoot_delay_ = get_parameter("shoot_delay").as_double();
+    shoot_delay_spin_ = get_parameter("shoot_delay_spin_").as_double();
 
     // 子弹飞行时间加上发单延迟
     double delay = shoot_delay_ + sqrt(xc*xc + yc*yc + zc*zc) / shoot_speed_;
@@ -158,6 +173,8 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     point_c_pre.z = point_c.z + velocity_c.z * delay;
 
     // 整车角度预测
+    // TODO: 角度预测时间要短些
+    delay = shoot_delay_spin_ + sqrt(xc*xc + yc*yc + zc*zc) / shoot_speed_;
     double yaw_pre = yaw + angular_v_c.z * delay;
 
     // 装甲板预测坐标
@@ -177,7 +194,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
 
     // 匹配最优装甲板，面朝摄像头为最优，通过yaw_pre来判断
     // double use_yaw = yaw;
-    // if(is_track)
+    // if(is_track)SerialDriver sending data: 
     //   use_yaw = yaw_pre;
     // int index = 0;
     // double min = 1000;
@@ -230,9 +247,12 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
 
     // 对抬枪角度进行增益
     if(is_pitch_gain){
+      pitch_gain_ = get_parameter("pitch_gain_").as_double();
       coord_solver_->bullet_speed = shoot_speed_;
-      double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(Eigen::Vector3d(x, y, z));
+      Eigen::Vector3d xyz(x, y, z);
+      double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(xyz);
       send_pitch_gain = send_pitch_gain * M_PI / 180.0;
+      send_pitch_gain *= xyz.norm() * pitch_gain_;
       RCLCPP_INFO(get_logger(), "send_pitch:%lf", send_pitch);
       RCLCPP_INFO(get_logger(), "send_pitch_gain:%lf", send_pitch_gain);
       RCLCPP_INFO(get_logger(), "x:%lf", x);
@@ -339,7 +359,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
         }
 
         // TODO:收到电控数据
-        // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
+        RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
         // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
         if (std::isnan(imu_yaw) || std::isnan(imu_pitch))
           continue;
