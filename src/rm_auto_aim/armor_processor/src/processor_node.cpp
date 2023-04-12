@@ -16,20 +16,76 @@ ArmorProcessorNode::ArmorProcessorNode(const rclcpp::NodeOptions & options)
   double max_match_distance = this->declare_parameter("tracker.max_match_distance", 0.2);
   int tracking_threshold = this->declare_parameter("tracker.tracking_threshold", 5);
   int lost_threshold = this->declare_parameter("tracker.lost_threshold", 5);
+  tracker_ = std::make_unique<Tracker>(max_match_distance, tracking_threshold, lost_threshold);
+
+  // EKF
+  // xa = x_armor, xc = x_robot_center
+  // state: xc, yc, zc, yaw, v_xc, v_yc, v_zc, v_yaw, r
+  // measurement: xa, ya, za, yaw
+  // f - Process function
+  auto f = [this](const Eigen::VectorXd & x) {
+    Eigen::VectorXd x_new = x;
+    x_new(0) += x(4) * dt_;
+    x_new(1) += x(5) * dt_;
+    x_new(2) += x(6) * dt_;
+    x_new(3) += x(7) * dt_;
+    return x_new;
+  };
+  // J_f - Jacobian of process function
+  auto j_f = [this](const Eigen::VectorXd &) {
+    Eigen::MatrixXd f(9, 9);
+    // clang-format off
+    f <<  1,   0,   0,   0,   dt_, 0,   0,   0,   0,
+          0,   1,   0,   0,   0,   dt_, 0,   0,   0,
+          0,   0,   1,   0,   0,   0,   dt_, 0,   0, 
+          0,   0,   0,   1,   0,   0,   0,   dt_, 0,
+          0,   0,   0,   0,   1,   0,   0,   0,   0,
+          0,   0,   0,   0,   0,   1,   0,   0,   0,
+          0,   0,   0,   0,   0,   0,   1,   0,   0,
+          0,   0,   0,   0,   0,   0,   0,   1,   0,
+          0,   0,   0,   0,   0,   0,   0,   0,   1;
+    // clang-format on
+    return f;
+  };
+  // h - Observation function
+  auto h = [](const Eigen::VectorXd & x) {
+    Eigen::VectorXd z(4);
+    double xc = x(0), yc = x(1), yaw = x(3), r = x(8);
+    z(0) = xc - r * cos(yaw);  // xa
+    z(1) = yc - r * sin(yaw);  // ya
+    z(2) = x(2);               // za
+    z(3) = x(3);               // yaw
+    return z;
+  };
+  // J_h - Jacobian of observation function
+  auto j_h = [](const Eigen::VectorXd & x) {
+    Eigen::MatrixXd h(4, 9);
+    double yaw = x(3), r = x(8);
+    // clang-format off
+    //    xc   yc   zc   yaw         vxc  vyc  vzc  vyaw r
+    h <<  1,   0,   0,   r*sin(yaw), 0,   0,   0,   0,   -cos(yaw),
+          0,   1,   0,   -r*cos(yaw),0,   0,   0,   0,   -sin(yaw),
+          0,   0,   1,   0,          0,   0,   0,   0,   0,
+          0,   0,   0,   1,          0,   0,   0,   0,   0;
+    // clang-format on
+    return h;
+  };
   // Q - process noise covariance matrix
   auto q_v = this->declare_parameter(
-    "kf.q", std::vector<double>{//xc  yc    zc    yaw   vxc   vyc   vzc   vyaw  r
+    "ekf.q", std::vector<double>{//xc  yc    zc    yaw   vxc   vyc   vzc   vyaw  r
                                 1e-2, 1e-2, 1e-2, 2e-2, 5e-2, 5e-2, 1e-4, 4e-2, 1e-3});
   Eigen::DiagonalMatrix<double, 9> q;
   q.diagonal() << q_v[0], q_v[1], q_v[2], q_v[3], q_v[4], q_v[5], q_v[6], q_v[7], q_v[8];
   // R - measurement noise covariance matrix
   auto r_v = this->declare_parameter(
-    "kf.r", std::vector<double>{//xa  ya    za    yaw
+    "ekf.r", std::vector<double>{//xa  ya    za    yaw
                                 1e-1, 1e-1, 1e-1, 2e-1});
   Eigen::DiagonalMatrix<double, 4> r;
   r.diagonal() << r_v[0], r_v[1], r_v[2], r_v[3];
-  tracker_ =
-    std::make_unique<Tracker>(max_match_distance, tracking_threshold, lost_threshold, q, r);
+  // P - error estimate covariance matrix
+  Eigen::DiagonalMatrix<double, 9> p0;
+  p0.setIdentity();
+  tracker_->ekf = ExtendedKalmanFilter{f, h, j_f, j_h, q, r, p0};
 
   // Subscriber with tf2 message_filter
   // tf2 relevant
@@ -42,7 +98,7 @@ ArmorProcessorNode::ArmorProcessorNode(const rclcpp::NodeOptions & options)
   tf2_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf2_buffer_);
   // subscriber and filter
   armors_sub_.subscribe(this, "/detector/armors", rmw_qos_profile_sensor_data);
-  target_frame_ = this->declare_parameter("target_frame", "shooter_link");
+  target_frame_ = this->declare_parameter("target_frame", "odom");
   tf2_filter_ = std::make_shared<tf2_filter>(
     armors_sub_, *tf2_buffer_, target_frame_, 10, this->get_node_logging_interface(),
     this->get_node_clock_interface(), std::chrono::duration<int>(1));
@@ -111,10 +167,8 @@ void ArmorProcessorNode::armorsCallback(
     tracker_->init(armors_msg);
     target_msg.tracking = false;
   } else {
-    // Set dt
     dt_ = (time - last_time_).seconds();
-    // Update state
-    tracker_->update(armors_msg, dt_);
+    tracker_->update(armors_msg);
 
     if (tracker_->tracker_state == Tracker::DETECTING) {
       target_msg.tracking = false;
@@ -125,6 +179,8 @@ void ArmorProcessorNode::armorsCallback(
       target_msg.id = tracker_->tracked_id;
     }
   }
+
+  last_time_ = time;
 
   const auto state = tracker_->target_state;
   target_msg.position.x = state(0);
@@ -141,8 +197,6 @@ void ArmorProcessorNode::armorsCallback(
   target_pub_->publish(target_msg);
 
   publishMarkers(target_msg);
-
-  last_time_ = time;
 }
 
 void ArmorProcessorNode::publishMarkers(const auto_aim_interfaces::msg::Target & target_msg)
@@ -180,7 +234,6 @@ void ArmorProcessorNode::publishMarkers(const auto_aim_interfaces::msg::Target &
 
     armors_marker_.action = visualization_msgs::msg::Marker::ADD;
     armors_marker_.points.clear();
-    // auto info = tracker_->getTargetInfo();
     geometry_msgs::msg::Point p_a;
     bool use_1 = true;
     for (size_t i = 0; i < 4; i++) {
