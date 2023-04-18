@@ -79,6 +79,10 @@ private:
   image_transport::Publisher binary_img_pub_;
   image_transport::Publisher number_img_pub_;
   image_transport::Publisher result_img_pub_;
+
+  // 录制视频
+  bool is_record_;
+  cv::VideoWriter video_writer_;
 };
 
 }  // namespace rm_auto_aim

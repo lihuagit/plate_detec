@@ -20,6 +20,11 @@
     min_lightness: 140
     classifier_threshold: 0.7
 
+    save_video_path: armor.avi
+    save_video_fps: 30
+    save_video_width: 640
+    save_video_height: 480
+
     light:
       max_angle: 40.0
       max_ratio: 0.6
@@ -77,3 +82,7 @@
     max_iter: 10
     # 停止迭代的最小误差(单位m)
     stop_error: 0.001
+
+/video_pub:
+  ros__parameters:
+    video_path: 37.mp4

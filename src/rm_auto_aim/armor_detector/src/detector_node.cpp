@@ -89,6 +89,15 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
   img_sub_ = std::make_shared<image_transport::Subscriber>(image_transport::create_subscription(
     this, "/image_raw", std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1),
     transport_, rmw_qos_profile_sensor_data));
+
+  // 用opencv录制视频,图像类型为rgb8
+  std::string save_video_path = this->declare_parameter("save_video_path", "armor.avi");
+  int save_video_fps = this->declare_parameter("save_video_fps", 30);
+  int save_video_width = this->declare_parameter("save_video_width", 640);
+  int save_video_height = this->declare_parameter("save_video_height", 480);
+  video_writer_.open(
+    save_video_path, cv::VideoWriter::fourcc('P', 'I', 'M', '1'), save_video_fps,
+    cv::Size(save_video_width, save_video_height), true);
     
   // img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
   //   "/image_raw", rclcpp::SensorDataQoS(),
@@ -201,6 +210,14 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
 {
   // Convert ROS img to cv::Mat
   auto img = cv_bridge::toCvShare(img_msg, "rgb8")->image;
+
+  // 录制视频
+  if (is_record_) {
+    // img转换为BGR
+    cv::Mat save_img;
+    cv::cvtColor(img, save_img, cv::COLOR_RGB2BGR);
+    video_writer_.write(save_img);
+  }
 
   // Update params
   detector_->min_lightness = get_parameter("min_lightness").as_int();
