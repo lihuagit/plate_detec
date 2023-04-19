@@ -12,7 +12,7 @@
     shoot_delay_spin_: 0.2
     shoot_speed: 14.4
 
-    x_gain: 0.0
+    z_gain: 0.0
     y_gain: 0.0
     pitch_gain_: 0.15
     
