@@ -51,7 +51,8 @@ public:
 		video_path_ = this->declare_parameter("video_path", "red_energy.mp4");
 		auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
 		cap_ = cv::VideoCapture(pkg_path + "/video/" + video_path_);
-		timer_ = this->create_wall_timer(std::chrono::milliseconds(50), std::bind(&VideoPub::timer_callback, this));
+		int fps = this->declare_parameter("fps", 20);
+		timer_ = this->create_wall_timer(std::chrono::milliseconds((int)1000/fps), std::bind(&VideoPub::timer_callback, this));
 	}
 
 private:

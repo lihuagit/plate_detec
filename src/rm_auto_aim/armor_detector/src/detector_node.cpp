@@ -91,14 +91,16 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
     transport_, rmw_qos_profile_sensor_data));
 
   // 用opencv录制视频,图像类型为rgb8
-  std::string save_video_path = this->declare_parameter("save_video_path", "armor.avi");
-  int save_video_fps = this->declare_parameter("save_video_fps", 30);
-  int save_video_width = this->declare_parameter("save_video_width", 640);
-  int save_video_height = this->declare_parameter("save_video_height", 480);
-  video_writer_.open(
-    save_video_path, cv::VideoWriter::fourcc('P', 'I', 'M', '1'), save_video_fps,
-    cv::Size(save_video_width, save_video_height), true);
-    
+  is_record_ = this->declare_parameter("is_record", false);
+  if(is_record_){
+    std::string save_video_path = this->declare_parameter("save_video_path", "armor.avi");
+    int save_video_fps = this->declare_parameter("save_video_fps", 30);
+    int save_video_width = this->declare_parameter("save_video_width", 640);
+    int save_video_height = this->declare_parameter("save_video_height", 480);
+    video_writer_.open(
+      save_video_path, cv::VideoWriter::fourcc('P', 'I', 'M', '1'), save_video_fps,
+      cv::Size(save_video_width, save_video_height), true);
+  }
   // img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
   //   "/image_raw", rclcpp::SensorDataQoS(),
   //   std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
