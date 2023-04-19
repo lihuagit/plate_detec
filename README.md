@@ -5,6 +5,9 @@
 ```shell
 rosdep install --from-paths src --ignore-src -r -y
 ./build.sh
+ros2 launch bringup armor_launch.py
+ros2 launch rosbridge_server rosbridge_websocket_launch.xml
+ros2 param load /armor_detector src/bringup/config/params.yaml
 ```
 
 

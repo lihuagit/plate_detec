@@ -17,7 +17,7 @@ def generate_launch_description():
     
     declare_use_serial_cmd = DeclareLaunchArgument(
         'use_serial',
-        default_value='True',
+        default_value='False',
         description='Whether use serial port')
 
     # params file path
@@ -33,6 +33,8 @@ def generate_launch_description():
         processor_params = yaml.safe_load(f)['/armor_processor']['ros__parameters']
     with open(params_file, 'r') as f:
         serial_params = yaml.safe_load(f)['/lc_serial_driver']['ros__parameters']
+    with open(params_file, 'r') as f:
+        video_params = yaml.safe_load(f)['/video_pub']['ros__parameters']
 
     # robot_description
     robot_description = Command(['xacro ', os.path.join(
@@ -58,6 +60,24 @@ def generate_launch_description():
                 plugin='mindvision_camera::MVCameraNode',
                 name='camera_node',
                 parameters=[camera_params, {'use_sensor_data_qos': True}],
+                extra_arguments=[{'use_intra_process_comms': True}]
+            ),
+            detector_node
+        ],
+        output='screen',
+    )
+
+    video_detector_container = ComposableNodeContainer(
+        name='video_detector_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=[
+            ComposableNode(
+                package='video_pub',
+                plugin='video_pub::VideoPub',
+                name='camera_node',
+                parameters=[video_params],
                 extra_arguments=[{'use_intra_process_comms': True}]
             ),
             detector_node
@@ -101,7 +121,8 @@ def generate_launch_description():
     return LaunchDescription([
         declare_use_serial_cmd,
         
-        mv_camera_detector_container,
+        # mv_camera_detector_container,
+        video_detector_container,
         processor_node,
         serial_node,
         robot_state_publisher,
