@@ -20,6 +20,7 @@
     min_lightness: 140
     classifier_threshold: 0.7
 
+    is_record: false
     save_video_path: armor.avi
     save_video_fps: 30
     save_video_width: 640
@@ -85,4 +86,5 @@
 
 /video_pub:
   ros__parameters:
-    video_path: 37.mp4
+    fps: 90
+    video_path: armor.avi
