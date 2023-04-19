@@ -26,7 +26,7 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   shoot_delay_spin_ = declare_parameter("shoot_delay_spin_", 0.2);
 
 
-  x_gain = declare_parameter("x_gain", 0.0);
+  z_gain = declare_parameter("z_gain", 0.0);
   y_gain = declare_parameter("y_gain", 0.0);
   pitch_gain_ = declare_parameter("pitch_gain_", 1.0);
 
@@ -77,7 +77,8 @@ SerialDriver::~SerialDriver()
   if (receive_thread_.joinable())
   {
     receive_thread_.join();
-  }SerialDriver sending data: 
+  }
+  // SerialDriver sending data: 
 
   if (serial_driver_->port()->is_open())
   {
@@ -116,10 +117,11 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     double vxc = msg->velocity.x, vyc = msg->velocity.y, vzc = msg->velocity.z;
     double v_yaw = msg->v_yaw;
 
-    x_gain = get_parameter("x_gain").as_double();
+    z_gain = get_parameter("z_gain").as_double();
     y_gain = get_parameter("y_gain").as_double();
 
-    xc += x_gain;
+    zc += z_gain;
+    z2 += z_gain;
     yc += y_gain;
 
     // yc-=0.3;
@@ -359,7 +361,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
         }
 
         // TODO:收到电控数据
-        RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
+        // RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
         // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
         if (std::isnan(imu_yaw) || std::isnan(imu_pitch))
           continue;
