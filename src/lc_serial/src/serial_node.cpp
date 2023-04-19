@@ -77,7 +77,7 @@ SerialDriver::~SerialDriver()
   if (receive_thread_.joinable())
   {
     receive_thread_.join();
-  }SerialDriver sending data: 
+  }
 
   if (serial_driver_->port()->is_open())
   {
