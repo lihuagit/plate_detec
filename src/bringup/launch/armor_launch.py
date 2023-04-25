@@ -17,7 +17,7 @@ def generate_launch_description():
     
     declare_use_serial_cmd = DeclareLaunchArgument(
         'use_serial',
-        default_value='False',
+        default_value='True',
         description='Whether use serial port')
 
     # params file path
@@ -121,8 +121,8 @@ def generate_launch_description():
     return LaunchDescription([
         declare_use_serial_cmd,
         
-        # mv_camera_detector_container,
-        video_detector_container,
+        mv_camera_detector_container,
+        # video_detector_container,
         processor_node,
         serial_node,
         robot_state_publisher,
