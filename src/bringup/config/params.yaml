@@ -4,7 +4,7 @@
     camera_info_url: package://mindvision_camera/config/camera_info.yaml
     camera_name: mv_camera
     frame_id: "camera_optical_frame"
-    exposure_time: 10000
+    exposure_time: 3000
     flip_image: false
     gamma: 120
     rgb_gain:
@@ -16,15 +16,15 @@
 /armor_detector:
   ros__parameters:
     debug: true
-    detect_color: 1
+    detect_color: 0
     min_lightness: 140
     classifier_threshold: 0.7
 
     is_record: false
     save_video_path: armor.avi
-    save_video_fps: 30
-    save_video_width: 640
-    save_video_height: 480
+    save_video_fps: 100
+    save_video_width: 1280
+    save_video_height: 1024
 
     light:
       max_angle: 40.0
@@ -54,7 +54,7 @@
 
     tracker:
       max_match_distance: 0.2
-      tracking_threshold: 5
+      tracking_threshold: 1
       lost_threshold: 25
 
 
@@ -68,11 +68,11 @@
     
     is_pitch_gain: true
     is_track: true
-    shoot_delay: 0.15
+    shoot_delay: 0.2
     shoot_delay_spin_: 0.1
     shoot_speed: 14.4
 
-    z_gain: -0.05
+    z_gain: -0.01
     y_gain: 0.0
     pitch_gain_: 0.15
     
