@@ -86,5 +86,6 @@
 
 /video_pub:
   ros__parameters:
-    fps: 90
-    video_path: armor.avi
+    fps: 100
+    video_path: red_1_5m.avi
+    # video_path: armor.avi
