@@ -102,6 +102,12 @@ void Tracker::update(const Armors::SharedPtr & armors_msg)
     ekf.setState(target_state);
   }
 
+  // Suppress R from converging too large
+  if (target_state(8) > 0.5) {
+    target_state(8) = 0.5;
+    ekf.setState(target_state);
+  }
+
   // Tracking state machine
   if (tracker_state == DETECTING) {
     if (matched) {
