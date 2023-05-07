@@ -63,6 +63,11 @@ public:
     // 设置手动曝光
     CameraSetAeState(h_camera_, false);
 
+    // 设置相机高速模式
+    tSdkCameraCapbility pCameraInfo;
+    CameraGetCapability(h_camera_, &pCameraInfo);
+    CameraSetFrameSpeed(h_camera_, pCameraInfo.iFrameSpeedDesc);
+
     // Declare camera parameters
     declareParameters();
 
@@ -103,6 +108,8 @@ public:
       camera_info_msg_.header.frame_id = image_msg_.header.frame_id = "camera_optical_frame";
       image_msg_.encoding = "rgb8";
 
+      bool debug_ = true;
+
       while (rclcpp::ok()) {
         if (
           CameraGetImageBuffer(h_camera_, &s_frame_info_, &pby_buffer_, 1000) ==
@@ -123,6 +130,17 @@ public:
           // 否则再次调用CameraGetImageBuffer时，程序将被挂起一直阻塞，
           // 直到其他线程中调用CameraReleaseImageBuffer来释放了buffer
           CameraReleaseImageBuffer(h_camera_, pby_buffer_);
+
+          if(debug_){
+            static int fps = 0;
+            static auto start_time = this->now();
+            if(this->now() - start_time >= rclcpp::Duration::from_seconds(1.0)){
+              RCLCPP_INFO(this->get_logger(), "Camera FPS: %d", fps);
+              fps = 0;
+              start_time = this->now();
+            }
+            fps ++ ;
+          }
         }
       }
     }};
