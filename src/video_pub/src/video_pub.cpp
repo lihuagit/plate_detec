@@ -48,7 +48,7 @@ public:
 			RCLCPP_WARN(this->get_logger(), "Invalid camera info URL: %s", camera_info_url.c_str());
 		}
 
-		video_path_ = this->declare_parameter("video_path", "red_energy.mp4");
+		video_path_ = this->declare_parameter("video_path", "red_1_5m.avi");
 		auto pkg_path = ament_index_cpp::get_package_share_directory("video_pub");
 		cap_ = cv::VideoCapture(pkg_path + "/video/" + video_path_);
 		int fps = this->declare_parameter("fps", 20);
@@ -74,8 +74,9 @@ private:
 		}
 		cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
 		auto image_msg_ = cv_bridge::CvImage(std_msgs::msg::Header(), "rgb8", frame).toImageMsg();
-      	(*image_msg_).header.frame_id = "camera_optical_frame";
-		camera_info_msg_.header.stamp = image_msg_->header.stamp = this->now();
+      	image_msg_->header.frame_id = "camera_optical_frame";
+		image_msg_->header.stamp = this->now();
+		camera_info_msg_.header = image_msg_->header;
 		camera_pub_.publish(*image_msg_, camera_info_msg_);
 	}
 	std::string video_path_;
