@@ -108,6 +108,16 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
 
 void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg)
 {
+  if(debug_){
+    static int fps = 0;
+    static auto start_time = this->now();
+    if(this->now() - start_time >= rclcpp::Duration::from_seconds(1.0)){
+      RCLCPP_INFO(this->get_logger(), "ArmorDetector FPS: %d", fps);
+      fps = 0;
+      start_time = this->now();
+    }
+    fps ++ ;
+  }
   auto armors = detectArmors(img_msg);
 
   if (pnp_solver_ != nullptr) {
@@ -248,9 +258,9 @@ std::vector<Armor> ArmorDetectorNode::detectArmors(
     lights_data_pub_->publish(detector_->debug_lights);
     armors_data_pub_->publish(detector_->debug_armors);
 
-    auto all_num_img = detector_->getAllNumbersImage();
-    number_img_pub_.publish(
-      *cv_bridge::CvImage(img_msg->header, "mono8", all_num_img).toImageMsg());
+    // auto all_num_img = detector_->getAllNumbersImage();
+    // number_img_pub_.publish(
+    //   *cv_bridge::CvImage(img_msg->header, "mono8", all_num_img).toImageMsg());
 
     detector_->drawResults(img);
     // Draw camera center
