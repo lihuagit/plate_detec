@@ -54,7 +54,7 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
       armor.left_light.bottom, armor.left_light.top, armor.right_light.top,
       armor.right_light.bottom};
 
-    const int top_light_y = (warp_height - light_length) / 2 + 2;
+    const int top_light_y = (warp_height - light_length) / 2 - 1;
     const int bottom_light_y = top_light_y + light_length;
     const int warp_width = armor.armor_type == SMALL ? small_armor_width : large_armor_width;
     cv::Point2f target_vertices[4] = {
@@ -71,7 +71,8 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
     number_image =
       number_image(cv::Rect(cv::Point((warp_width - roi_size.width) / 2, 0), roi_size));
 
-    // number_image *= 10;
+    // number_image 下半部分设置为0
+    number_image(cv::Rect(cv::Point(0, 23), cv::Point(roi_size))) = 0;
 
     // Binarize
     cv::cvtColor(number_image, number_image, cv::COLOR_RGB2GRAY);
