@@ -91,7 +91,7 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[processor_params],
-        arguments=['--ros-args', '--log-level', 'armor_processor:=DEBUG'],
+        arguments=['--ros-args', '--log-level', 'armor_processor:=INFO'],
     )
     
     serial_node = Node(
