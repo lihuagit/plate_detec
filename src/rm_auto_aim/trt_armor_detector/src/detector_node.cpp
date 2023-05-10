@@ -125,7 +125,7 @@ void TRTDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPt
 		}
 		else{
 			fps = fps_tmp;
-			RCLCPP_INFO(this->get_logger(), "TRTDetector FPS: %d", fps);
+			RCLCPP_INFO(rclcpp::get_logger("trt_armor_detector"), "TRTDetector FPS: %d", fps);
 			fps_tmp = 0;
 			last_time = start_time;
 		}
@@ -138,7 +138,11 @@ void TRTDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstSharedPt
     std::vector<bbox> bboxes;
 	prob_threshold = this->get_parameter("prob_threshold").as_double();
 	nms_threshold= this->get_parameter("nms_threshold").as_double();
-	trt_detector.detect(img, bboxes, prob_threshold, nms_threshold);
+
+	// 判断是否喂BRG格式，若为RGB，则转BRG
+	cv::Mat detector_img;
+	cv::cvtColor(img, detector_img, cv::COLOR_RGB2BGR);
+	trt_detector.detect(detector_img, bboxes, prob_threshold, nms_threshold);
 	
 	if (pnp_solver_ != nullptr) {
 		armors_msg_.header = armor_marker_.header = text_marker_.header = img_msg->header;
@@ -259,7 +263,7 @@ void TRTDetectorNode::publishMarkers()
  */
 void TRTDetectorNode::createDebugPublishers()
 {
-	final_img_pub_ = image_transport::create_publisher(this, "/final_img");
+	final_img_pub_ = image_transport::create_publisher(this, "/detector/result_img");
 }
 
 /**
