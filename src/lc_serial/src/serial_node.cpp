@@ -14,7 +14,7 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   , owned_ctx_{ new IoContext(2) }
   , serial_driver_{ new drivers::serial_driver::SerialDriver(*owned_ctx_) }
 {
-  RCLCPP_INFO(get_logger(), "Start SerialDriver!");
+  RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "Start SerialDriver!");
 
   getParams();
 
@@ -26,8 +26,9 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   shoot_delay_spin_ = declare_parameter("shoot_delay_spin_", 0.2);
 
 
-  x_gain = declare_parameter("x_gain", 0.0);
+  z_gain = declare_parameter("z_gain", 0.0);
   y_gain = declare_parameter("y_gain", 0.0);
+  x_gain = declare_parameter("x_gain", 0.0);
   pitch_gain_ = declare_parameter("pitch_gain_", 1.0);
 
   // 构造位姿解算器, 定义参数
@@ -40,20 +41,20 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   joint_state_pub_ =
       this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
 
-  try
-  {
-    serial_driver_->init_port(device_name_, *device_config_);
-    if (!serial_driver_->port()->is_open())
-    {
-      serial_driver_->port()->open();
-      receive_thread_ = std::thread(&SerialDriver::receiveData, this);
-    }
-  }
-  catch (const std::exception& ex)
-  {
-    RCLCPP_ERROR(get_logger(), "Error creating lc_serial port: %s - %s", device_name_.c_str(), ex.what());
-    throw ex;
-  }
+  // try
+  // {
+  //   serial_driver_->init_port(device_name_, *device_config_);
+  //   if (!serial_driver_->port()->is_open())
+  //   {
+  //     serial_driver_->port()->open();
+  //     receive_thread_ = std::thread(&SerialDriver::receiveData, this);
+  //   }
+  // }
+  // catch (const std::exception& ex)
+  // {
+  //   RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error creating lc_serial port: %s - %s", device_name_.c_str(), ex.what());
+  //   throw ex;
+  // }
   
   // Visualization Marker Publisher
   // See http://wiki.ros.org/rviz/DisplayTypes/Marker
@@ -69,7 +70,12 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
 
   // Create Subscription
   target_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
-      "/processor/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::sendData, this, std::placeholders::_1));
+      "/processor/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::targetCallback, this, std::placeholders::_1));
+
+  last_time = this->now();
+
+  int fps = this->declare_parameter("fps", 150);
+  timer_ = this->create_wall_timer(std::chrono::milliseconds((int)1000/fps), std::bind(&SerialDriver::sendData, this));
 }
 
 SerialDriver::~SerialDriver()
@@ -90,17 +96,65 @@ SerialDriver::~SerialDriver()
   }
 }
 
+
+void SerialDriver::targetCallback(auto_aim_interfaces::msg::Target::SharedPtr msg){
+  static rclcpp::Time last_time = this->now();
+  static int fps_tmp = 0;
+  static int fps = 0;
+  auto start_time = this->now();
+
+  if((start_time - last_time).seconds() < 1){
+    fps_tmp++;
+  }
+  else{
+    fps = fps_tmp;
+    RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "lc_serial targetCallback FPS: %d", fps);
+    fps_tmp = 0;
+    last_time = start_time;
+  }
+  // 实现线程安全
+  mutex_.lock();
+    last_msg = *msg;
+    last_time = this->now();
+  mutex_.unlock();
+}
+
 /**
  * @brief 发送数据
  * @param msg
  */
-void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr msg)
+void SerialDriver::sendData()
 {
   try
   {
-    position_marker_.header = msg->header;
-    // 未在跟踪状态，不发送数据
-    if (msg->tracking == false)
+
+		static rclcpp::Time last_time = this->now();
+		static int fps_tmp = 0;
+    static int fps = 0;
+		auto start_time = this->now();
+
+		if((start_time - last_time).seconds() < 1){
+			fps_tmp++;
+		}
+		else{
+			fps = fps_tmp;
+			RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "lc_serial send_data FPS: %d", fps);
+			fps_tmp = 0;
+			last_time = start_time;
+		}
+
+    // 实现线程安全
+    mutex_.lock();
+      auto msg = last_msg;
+      auto time = last_time;
+    mutex_.unlock();
+    // 计算时间间隔， 与last_time
+    auto now_time = this->now();
+    auto time_interval = now_time - time;
+
+    position_marker_.header = msg.header;
+    // 未在跟踪状态，或是时间超过间隔，不发送数据
+    if (msg.tracking == false || time_interval.seconds() > 1)
     {
       position_marker_.action = visualization_msgs::msg::Marker::DELETE;
       visualization_msgs::msg::MarkerArray marker_array;
@@ -110,17 +164,32 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     }
 
     // 解算数据
-    double yaw = msg->yaw, r1 = msg->radius_1, r2 = msg->radius_2;
-    double xc = msg->position.x, yc = msg->position.y, zc = msg->position.z;
-    double z2 = msg->z_2;
-    double vxc = msg->velocity.x, vyc = msg->velocity.y, vzc = msg->velocity.z;
-    double v_yaw = msg->v_yaw;
+    double yaw = msg.yaw, r1 = msg.radius_1, r2 = msg.radius_2;
+    double xc = msg.position.x, yc = msg.position.y, zc = msg.position.z;
+    double z2 = msg.z_2;
+    double vxc = msg.velocity.x, vyc = msg.velocity.y, vzc = msg.velocity.z;
+    double v_yaw = msg.v_yaw;
 
-    x_gain = get_parameter("x_gain").as_double();
+    z_gain = get_parameter("z_gain").as_double();
     y_gain = get_parameter("y_gain").as_double();
+    x_gain = get_parameter("x_gain").as_double();
 
-    xc += x_gain;
+    zc += z_gain;
+    z2 += z_gain;
     yc += y_gain;
+    xc += x_gain;
+
+    // 对数据进行补帧
+    // 补帧的目的是为了让数据更加平滑，减少抖动
+    // 补帧的原理是线性插值
+    // 整车坐标补帧
+    xc += vxc * time_interval.seconds();
+    yc += vyc * time_interval.seconds();
+    zc += vzc * time_interval.seconds();
+    z2 += vzc * time_interval.seconds();
+
+    // 整车角度补帧
+    yaw += v_yaw * time_interval.seconds();
 
     // yc-=0.3;
     // 整车坐标
@@ -253,11 +322,11 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
       double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(xyz);
       send_pitch_gain = send_pitch_gain * M_PI / 180.0;
       send_pitch_gain *= xyz.norm() * pitch_gain_;
-      RCLCPP_INFO(get_logger(), "send_pitch:%lf", send_pitch);
-      RCLCPP_INFO(get_logger(), "send_pitch_gain:%lf", send_pitch_gain);
-      RCLCPP_INFO(get_logger(), "x:%lf", x);
-      RCLCPP_INFO(get_logger(), "y:%lf", y);
-      RCLCPP_INFO(get_logger(), "z:%lf", z);
+      RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch:%lf", send_pitch);
+      RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch_gain:%lf", send_pitch_gain);
+      // RCLCPP_DEBUG(rclcpp::get_logger(), "x:%lf", x);
+      // RCLCPP_DEBUG(rclcpp::get_logger(), "y:%lf", y);
+      // RCLCPP_DEBUG(rclcpp::get_logger(), "z:%lf", z);
       send_pitch += send_pitch_gain;
     }
 
@@ -270,9 +339,6 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     visualization_msgs::msg::MarkerArray marker_array;
     marker_array.markers.emplace_back(position_marker_);
     marker_pub_->publish(marker_array);
-
-    // 发送数据
-    std::vector<uint8_t> data;
 
     /* 创建一个JSON数据对象(链表头结点) */
 
@@ -294,21 +360,22 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
 
     cJSON_AddItemToObject(cjson_send, "dat", cjson_dat);
 
+    // 转化为待发送数据结构
     str = cJSON_PrintUnformatted(cjson_send);
-    int str_len = strlen(str);
-    for (int i = 0; i < str_len; i++)
-    {
-      data.push_back(str[i]);
-    }
+    cJSON_Delete(cjson_send);
+    int str_len = std::strlen(str);
+    
+    std::vector<uint8_t> data(str, str + str_len);
     data.push_back('\n');
+    data.push_back('\0');
 
-    serial_driver_->port()->send(data);
-    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %s", data.data());
-    RCLCPP_INFO(get_logger(), "SerialDriver sending data: %d", str_len);
+    // serial_driver_->port()->send(data);
+    RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "SerialDriver sending data: %s", data.data());
+    RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "SerialDriver sending data: %d", str_len);
   }
   catch (const std::exception& ex)
   {
-    RCLCPP_ERROR(get_logger(), "Error while sending data: %s", ex.what());
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error while sending data: %s", ex.what());
     reopenPort();
   }
 }
@@ -338,7 +405,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
         cJSON* root = cJSON_Parse((char*)data.data());
         if (!root)
         {
-          RCLCPP_INFO(get_logger(), "Error before: [%s]", cJSON_GetErrorPtr());
+          RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error before: [%s]", cJSON_GetErrorPtr());
           continue;
         }
         else
@@ -346,21 +413,18 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
           cJSON* dat = cJSON_GetObjectItem(root, "dat");
           if (!dat)
           {
-            RCLCPP_INFO(get_logger(), "Error before: [%s]", cJSON_GetErrorPtr());
+            RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error before: [%s]", cJSON_GetErrorPtr());
             continue;
           }
           else
           {
             imu_yaw = cJSON_GetObjectItem(dat, "imu_yaw")->valuedouble;
             imu_pitch = cJSON_GetObjectItem(dat, "imu_pitch")->valuedouble;
-            // RCLCPP_INFO(get_logger(), "imu_yaw: %f", imu_yaw);
-            //  RCLCPP_INFO(get_logger(), "imu_pitch: %f", imu_pitch);
           }
         }
 
-        // TODO:收到电控数据
-        RCLCPP_INFO(get_logger(), "SerialDriver receiving data: %s", data.data());
-        // RCLCPP_INFO(get_logger(), "SerialDriver receiving len: %d", rec_len);
+        // 收到电控数据
+        RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "SerialDriver receiving data: %s", data.data());
         if (std::isnan(imu_yaw) || std::isnan(imu_pitch))
           continue;
         try
@@ -375,12 +439,12 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
         }
         catch (const std::exception& ex)
         {
-          RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
+          RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error while receiving data: %s", ex.what());
         }
       }
       catch (const std::exception& ex)
       {
-        RCLCPP_ERROR(get_logger(), "Error while receiving data: %s", ex.what());
+        RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error while receiving data: %s", ex.what());
         reopenPort();
       }
     }
@@ -391,7 +455,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
    */
   void SerialDriver::reopenPort()
   {
-    RCLCPP_WARN(get_logger(), "Attempting to reopen port");
+    RCLCPP_WARN(rclcpp::get_logger("lc_serial"), "Attempting to reopen port");
     try
     {
       if (serial_driver_->port()->is_open())
@@ -399,11 +463,11 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
         serial_driver_->port()->close();
       }
       serial_driver_->port()->open();
-      RCLCPP_INFO(get_logger(), "Successfully reopened port");
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "Successfully reopened port");
     }
     catch (const std::exception& ex)
     {
-      RCLCPP_ERROR(get_logger(), "Error while reopening port: %s", ex.what());
+      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error while reopening port: %s", ex.what());
       if (rclcpp::ok())
       {
         rclcpp::sleep_for(std::chrono::seconds(1));
@@ -429,7 +493,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     }
     catch (rclcpp::ParameterTypeException& ex)
     {
-      RCLCPP_ERROR(get_logger(), "The device name provided was invalid");
+      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The device name provided was invalid");
       throw ex;
     }
 
@@ -439,7 +503,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     }
     catch (rclcpp::ParameterTypeException& ex)
     {
-      RCLCPP_ERROR(get_logger(), "The baud_rate provided was invalid");
+      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The baud_rate provided was invalid");
       throw ex;
     }
 
@@ -466,7 +530,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     }
     catch (rclcpp::ParameterTypeException& ex)
     {
-      RCLCPP_ERROR(get_logger(), "The flow_control provided was invalid");
+      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The flow_control provided was invalid");
       throw ex;
     }
 
@@ -493,7 +557,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     }
     catch (rclcpp::ParameterTypeException& ex)
     {
-      RCLCPP_ERROR(get_logger(), "The parity provided was invalid");
+      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The parity provided was invalid");
       throw ex;
     }
 
@@ -520,7 +584,7 @@ void SerialDriver::sendData(const auto_aim_interfaces::msg::Target::SharedPtr ms
     }
     catch (rclcpp::ParameterTypeException& ex)
     {
-      RCLCPP_ERROR(get_logger(), "The stop_bits provided was invalid");
+      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The stop_bits provided was invalid");
       throw ex;
     }
 

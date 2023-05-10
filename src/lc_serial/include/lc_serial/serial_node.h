@@ -17,6 +17,7 @@
 // ros
 #include <rclcpp/publisher.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/logging.hpp>
 #include <rclcpp/subscription.hpp>
 #include <serial_driver/serial_driver.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
@@ -41,8 +42,10 @@ private:
   void getParams();
 
   void receiveData();
+  
+  void sendData();
 
-  void sendData(auto_aim_interfaces::msg::Target::SharedPtr msg);
+  void targetCallback(auto_aim_interfaces::msg::Target::SharedPtr msg);
 
   void reopenPort();
 
@@ -63,16 +66,27 @@ private:
   double shoot_speed_;
   double shoot_delay_;
   double shoot_delay_spin_;
-  double x_gain;
+  double z_gain;
   double y_gain;
+  double x_gain;
   double pitch_gain_;
 
   bool is_track;
   bool is_pitch_gain;
-  
+
+  auto_aim_interfaces::msg::Target last_msg;
+  rclcpp::Time last_time;
+
+  // 线程安全
+  std::mutex mutex_;
+
+
   // Visualization marker publisher
   visualization_msgs::msg::Marker position_marker_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+
+	rclcpp::TimerBase::SharedPtr timer_;
+
 };
 
 #endif  // SERIAL__SERIAL_NODE_H_
