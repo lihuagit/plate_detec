@@ -135,7 +135,7 @@ public:
             static int fps = 0;
             static auto start_time = this->now();
             if(this->now() - start_time >= rclcpp::Duration::from_seconds(1.0)){
-              RCLCPP_INFO(this->get_logger(), "Camera FPS: %d", fps);
+              RCLCPP_INFO(rclcpp::get_logger("mindvision_camera"), "Camera FPS: %d", fps);
               fps = 0;
               start_time = this->now();
             }

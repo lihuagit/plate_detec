@@ -112,7 +112,7 @@ void ArmorDetectorNode::imageCallback(const sensor_msgs::msg::Image::ConstShared
     static int fps = 0;
     static auto start_time = this->now();
     if(this->now() - start_time >= rclcpp::Duration::from_seconds(1.0)){
-      RCLCPP_INFO(this->get_logger(), "ArmorDetector FPS: %d", fps);
+      RCLCPP_INFO(rclcpp::get_logger("armor_detector"), "ArmorDetector FPS: %d", fps);
       fps = 0;
       start_time = this->now();
     }
