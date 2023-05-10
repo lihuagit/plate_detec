@@ -41,6 +41,16 @@
       max_small_center_distance: 2.8
       min_small_center_distance: 0.8
 
+/trt_armor_detector:
+  ros__parameters:
+    subscribe_compressed: false
+    active: true
+    debug: true
+    model_path: lihua_private.trt
+    # 0 for blue, 1 for red
+    detect_color: 1
+    prob_threshold: 0.25 
+    nms_threshold: 0.45
 
 /armor_processor:
   ros__parameters:
@@ -65,15 +75,18 @@
     flow_control: none
     parity: none
     stop_bits: "1"
+
+    fps: 150
     
     is_pitch_gain: true
-    is_track: true
+    is_track: false
     shoot_delay: 0.4
     shoot_delay_spin_: 0.2
     shoot_speed: 14.4
 
     x_gain: 0.0
     y_gain: 0.0
+    z_gain: 0.0
     pitch_gain_: 0.15
     
     
@@ -87,5 +100,5 @@
 /video_pub:
   ros__parameters:
     fps: 100
-    video_path: red_1_5m.avi
-    # video_path: armor.avi
+    # video_path: red_1_5m.avi
+    video_path: armor.avi
