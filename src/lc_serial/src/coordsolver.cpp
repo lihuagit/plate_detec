@@ -108,7 +108,7 @@ double CoordSolver::dynamicCalcPitchOffset(Eigen::Vector3d xyz)
 		}
 		//评估迭代结果,若小于迭代精度需求则停止迭代
 		auto error = dist_vertical - y;
-		if (abs(error) <= stop_error)
+		if (fabs(error) <= stop_error)
 		{
 			break;
 		}

@@ -33,14 +33,14 @@ public:
     double calcPitch(Eigen::Vector3d &xyz);
     Eigen::Vector2d calcYawPitch(Eigen::Vector3d &xyz);
 
-    double bullet_speed = 20;            //TODO:弹速可变
-    double k = 0.0389;                //25°C,1atm,小弹丸
+    double bullet_speed = 15;            //TODO:弹速可变
+    // double k = 0.0389;                //25°C,1atm,小弹丸
+    double k = 0.0111;                //25°C,1atm,大弹丸
 private:
     int max_iter;
     float stop_error;
     int R_K_iter;
     // const int bullet_speed = 16;            //TODO:弹速可变
-    // const double k = 0.0111;                //25°C,1atm,大弹丸
     const double g = 9.801;
 };
 
