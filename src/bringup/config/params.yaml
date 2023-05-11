@@ -1,12 +1,12 @@
 /mv_camera:
   ros__parameters:
-    analog_gain: 10
+    # analog_gain: 10
     camera_info_url: package://mindvision_camera/config/camera_info.yaml
     camera_name: mv_camera
     frame_id: "camera_optical_frame"
     exposure_time: 7000
     flip_image: false
-    gamma: 40
+    gamma: 80
     rgb_gain:
       b: 100
       g: 125
@@ -16,7 +16,7 @@
 /armor_detector:
   ros__parameters:
     debug: true
-    detect_color: 0
+    detect_color: 1
     min_lightness: 140
     classifier_threshold: 0.7
 
@@ -46,9 +46,9 @@
     subscribe_compressed: false
     active: true
     debug: true
-    model_path: lihua_private.trt
+    model_path: 20230415.trt
     # 0 for blue, 1 for red
-    detect_color: 1
+    detect_color: 0
     prob_threshold: 0.25 
     nms_threshold: 0.45
 
@@ -76,10 +76,11 @@
     parity: none
     stop_bits: "1"
 
-    fps: 150
+    fps: 100
+    is_try: false
     
     is_pitch_gain: true
-    is_track: false
+    is_track: true
     shoot_delay: 0.4
     shoot_delay_spin_: 0.2
     shoot_speed: 14.4
