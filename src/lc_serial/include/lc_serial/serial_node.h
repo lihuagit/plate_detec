@@ -43,9 +43,7 @@ private:
 
   void receiveData();
   
-  void sendData();
-
-  void targetCallback(auto_aim_interfaces::msg::Target::SharedPtr msg);
+  void sendData(auto_aim_interfaces::msg::Target::SharedPtr msg);
 
   void reopenPort();
 
@@ -74,18 +72,10 @@ private:
   bool is_track;
   bool is_pitch_gain;
 
-  auto_aim_interfaces::msg::Target last_msg;
-  rclcpp::Time last_time;
-
-  // 线程安全
-  std::mutex mutex_;
-
 
   // Visualization marker publisher
   visualization_msgs::msg::Marker position_marker_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
-
-	rclcpp::TimerBase::SharedPtr timer_;
 
 };
 

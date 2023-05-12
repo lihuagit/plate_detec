@@ -41,20 +41,20 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   joint_state_pub_ =
       this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
 
-  // try
-  // {
-  //   serial_driver_->init_port(device_name_, *device_config_);
-  //   if (!serial_driver_->port()->is_open())
-  //   {
-  //     serial_driver_->port()->open();
-  //     receive_thread_ = std::thread(&SerialDriver::receiveData, this);
-  //   }
-  // }
-  // catch (const std::exception& ex)
-  // {
-  //   RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error creating lc_serial port: %s - %s", device_name_.c_str(), ex.what());
-  //   throw ex;
-  // }
+  try
+  {
+    serial_driver_->init_port(device_name_, *device_config_);
+    if (!serial_driver_->port()->is_open())
+    {
+      serial_driver_->port()->open();
+      receive_thread_ = std::thread(&SerialDriver::receiveData, this);
+    }
+  }
+  catch (const std::exception& ex)
+  {
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error creating lc_serial port: %s - %s", device_name_.c_str(), ex.what());
+    throw ex;
+  }
   
   // Visualization Marker Publisher
   // See http://wiki.ros.org/rviz/DisplayTypes/Marker
@@ -70,12 +70,8 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
 
   // Create Subscription
   target_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
-      "/processor/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::targetCallback, this, std::placeholders::_1));
+      "/processor/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::sendData, this, std::placeholders::_1));
 
-  last_time = this->now();
-
-  int fps = this->declare_parameter("fps", 150);
-  timer_ = this->create_wall_timer(std::chrono::milliseconds((int)1000/fps), std::bind(&SerialDriver::sendData, this));
 }
 
 SerialDriver::~SerialDriver()
@@ -96,38 +92,14 @@ SerialDriver::~SerialDriver()
   }
 }
 
-
-void SerialDriver::targetCallback(auto_aim_interfaces::msg::Target::SharedPtr msg){
-  static rclcpp::Time last_time = this->now();
-  static int fps_tmp = 0;
-  static int fps = 0;
-  auto start_time = this->now();
-
-  if((start_time - last_time).seconds() < 1){
-    fps_tmp++;
-  }
-  else{
-    fps = fps_tmp;
-    RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "lc_serial targetCallback FPS: %d", fps);
-    fps_tmp = 0;
-    last_time = start_time;
-  }
-  // 实现线程安全
-  mutex_.lock();
-    last_msg = *msg;
-    last_time = this->now();
-  mutex_.unlock();
-}
-
 /**
  * @brief 发送数据
  * @param msg
  */
-void SerialDriver::sendData()
+void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
 {
   try
   {
-
 		static rclcpp::Time last_time = this->now();
 		static int fps_tmp = 0;
     static int fps = 0;
@@ -143,18 +115,9 @@ void SerialDriver::sendData()
 			last_time = start_time;
 		}
 
-    // 实现线程安全
-    mutex_.lock();
-      auto msg = last_msg;
-      auto time = last_time;
-    mutex_.unlock();
-    // 计算时间间隔， 与last_time
-    auto now_time = this->now();
-    auto time_interval = now_time - time;
-
-    position_marker_.header = msg.header;
+    position_marker_.header = msg->header;
     // 未在跟踪状态，或是时间超过间隔，不发送数据
-    if (msg.tracking == false || time_interval.seconds() > 1)
+    if (msg->tracking == false)
     {
       position_marker_.action = visualization_msgs::msg::Marker::DELETE;
       visualization_msgs::msg::MarkerArray marker_array;
@@ -164,11 +127,11 @@ void SerialDriver::sendData()
     }
 
     // 解算数据
-    double yaw = msg.yaw, r1 = msg.radius_1, r2 = msg.radius_2;
-    double xc = msg.position.x, yc = msg.position.y, zc = msg.position.z;
-    double z2 = msg.z_2;
-    double vxc = msg.velocity.x, vyc = msg.velocity.y, vzc = msg.velocity.z;
-    double v_yaw = msg.v_yaw;
+    double yaw = msg->yaw, r1 = msg->radius_1, r2 = msg->radius_2;
+    double xc = msg->position.x, yc = msg->position.y, zc = msg->position.z;
+    double z2 = msg->z_2;
+    double vxc = msg->velocity.x, vyc = msg->velocity.y, vzc = msg->velocity.z;
+    double v_yaw = msg->v_yaw;
 
     z_gain = get_parameter("z_gain").as_double();
     y_gain = get_parameter("y_gain").as_double();
@@ -178,18 +141,6 @@ void SerialDriver::sendData()
     z2 += z_gain;
     yc += y_gain;
     xc += x_gain;
-
-    // 对数据进行补帧
-    // 补帧的目的是为了让数据更加平滑，减少抖动
-    // 补帧的原理是线性插值
-    // 整车坐标补帧
-    xc += vxc * time_interval.seconds();
-    yc += vyc * time_interval.seconds();
-    zc += vzc * time_interval.seconds();
-    z2 += vzc * time_interval.seconds();
-
-    // 整车角度补帧
-    yaw += v_yaw * time_interval.seconds();
 
     // yc-=0.3;
     // 整车坐标
@@ -320,10 +271,14 @@ void SerialDriver::sendData()
       coord_solver_->bullet_speed = shoot_speed_;
       Eigen::Vector3d xyz(x, y, z);
       double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(xyz);
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch_gain 111:%lf", send_pitch_gain);
       send_pitch_gain = send_pitch_gain * M_PI / 180.0;
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch_gain 222:%lf", send_pitch_gain);
       send_pitch_gain *= xyz.norm() * pitch_gain_;
-      RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch:%lf", send_pitch);
-      RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch_gain:%lf", send_pitch_gain);
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch:%lf", send_pitch);
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "pitch_gain_:%lf", pitch_gain_);
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "xyz.norm():%lf", xyz.norm());
+      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch_gain:%lf", send_pitch_gain);
       // RCLCPP_DEBUG(rclcpp::get_logger(), "x:%lf", x);
       // RCLCPP_DEBUG(rclcpp::get_logger(), "y:%lf", y);
       // RCLCPP_DEBUG(rclcpp::get_logger(), "z:%lf", z);
@@ -367,9 +322,9 @@ void SerialDriver::sendData()
     
     std::vector<uint8_t> data(str, str + str_len);
     data.push_back('\n');
-    data.push_back('\0');
+    // data.push_back('\0');
 
-    // serial_driver_->port()->send(data);
+    serial_driver_->port()->send(data);
     RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "SerialDriver sending data: %s", data.data());
     RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "SerialDriver sending data: %d", str_len);
   }
@@ -391,6 +346,7 @@ void SerialDriver::sendData()
     {
       try
       {
+        data.clear();
         data.resize(200);
         int rec_len = serial_driver_->port()->receive(data);
 
@@ -405,7 +361,7 @@ void SerialDriver::sendData()
         cJSON* root = cJSON_Parse((char*)data.data());
         if (!root)
         {
-          RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error before: [%s]", cJSON_GetErrorPtr());
+          RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "receiveData Error before: [%s]", cJSON_GetErrorPtr());
           continue;
         }
         else
@@ -413,7 +369,7 @@ void SerialDriver::sendData()
           cJSON* dat = cJSON_GetObjectItem(root, "dat");
           if (!dat)
           {
-            RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "Error before: [%s]", cJSON_GetErrorPtr());
+            RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "receiveData Error before: [%s]", cJSON_GetErrorPtr());
             continue;
           }
           else
