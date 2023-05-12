@@ -40,6 +40,11 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   // Create Publisher
   joint_state_pub_ =
       this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
+  
+  target_color_pub_ =
+      this->create_publisher<std_msgs::msg::String>("/target_color", rclcpp::QoS(rclcpp::KeepLast(1)));
+
+  target_color = -1;
 
   try
   {
@@ -356,6 +361,7 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
         data[rec_len - 1] = '\0';
 
         double imu_yaw = 0, imu_pitch = 0;
+        int robot_color = -1;
 
         // 解析json
         cJSON* root = cJSON_Parse((char*)data.data());
@@ -376,7 +382,23 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
           {
             imu_yaw = cJSON_GetObjectItem(dat, "imu_yaw")->valuedouble;
             imu_pitch = cJSON_GetObjectItem(dat, "imu_pitch")->valuedouble;
+            robot_color = (int)(cJSON_GetObjectItem(dat, "robot_color")->valuedouble);
           }
+        }
+
+        if(robot_color != -1 && robot_color != target_color)
+        {
+          target_color = robot_color;
+          std_msgs::msg::String color_msg;
+          if(robot_color == 0){
+            color_msg.data = "BLUE";
+            target_color_pub_->publish(color_msg);
+          }
+          else if(robot_color == 1){
+            color_msg.data = "RED";
+            target_color_pub_->publish(color_msg);
+          }
+          RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "updata target color: %s", color_msg.data.data());
         }
 
         // 收到电控数据

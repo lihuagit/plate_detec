@@ -19,6 +19,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/logging.hpp>
 #include <rclcpp/subscription.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <serial_driver/serial_driver.hpp>
 #include <sensor_msgs/msg/joint_state.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
@@ -50,6 +51,8 @@ private:
   std::unique_ptr<CoordSolver> coord_solver_;
 
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
+  // target_color pub
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr target_color_pub_;
 
   std::unique_ptr<IoContext> owned_ctx_;
   std::string device_name_;
@@ -60,6 +63,8 @@ private:
   
 
   std::thread receive_thread_;
+
+  int target_color;
 
   double shoot_speed_;
   double shoot_delay_;

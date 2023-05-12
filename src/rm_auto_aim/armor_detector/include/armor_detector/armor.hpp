@@ -12,8 +12,8 @@
 
 namespace rm_auto_aim
 {
-const int RED = 0;
-const int BLUE = 1;
+const int BLUE = 0;
+const int RED = 1;
 
 enum ArmorType { SMALL = 0, LARGE = 1 };
 

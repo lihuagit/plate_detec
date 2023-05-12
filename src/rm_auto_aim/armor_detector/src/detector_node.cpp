@@ -101,6 +101,19 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       save_video_path, cv::VideoWriter::fourcc('P', 'I', 'M', '1'), save_video_fps,
       cv::Size(save_video_width, save_video_height), true);
   }
+
+  targer_color_sub_ = this->create_subscription<std_msgs::msg::String>(
+    "/target_color", rclcpp::SensorDataQoS(),
+    [this](std_msgs::msg::String::ConstSharedPtr target_color) {
+      if(target_color->data == "BLUE" || target_color->data == "blue"){
+        set_parameter(rclcpp::Parameter("detect_color", 0));
+      }else if(target_color->data == "RED" || target_color->data == "red"){
+        set_parameter(rclcpp::Parameter("detect_color", 1));
+      }else{
+        RCLCPP_WARN(this->get_logger(), "Invalid color!");
+      }
+    });
+
   // img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
   //   "/image_raw", rclcpp::SensorDataQoS(),
   //   std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
@@ -187,7 +200,7 @@ std::unique_ptr<Detector> ArmorDetectorNode::initDetector()
   param_desc.integer_range[0].to_value = 255;
   int min_lightness = declare_parameter("min_lightness", 160, param_desc);
 
-  param_desc.description = "0-RED, 1-BLUE";
+  param_desc.description = "0-BLUE, 1-RED";
   param_desc.integer_range[0].from_value = 0;
   param_desc.integer_range[0].to_value = 1;
   auto detect_color = declare_parameter("detect_color", RED, param_desc);

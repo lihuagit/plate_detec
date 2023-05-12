@@ -12,6 +12,7 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/string.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
 // STD
@@ -61,6 +62,9 @@ private:
   std::shared_ptr<image_transport::Subscriber> img_sub_;
   // rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
   void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
+
+  // targer color subscription
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr targer_color_sub_;
 
   std::unique_ptr<PnPSolver> pnp_solver_;
 
