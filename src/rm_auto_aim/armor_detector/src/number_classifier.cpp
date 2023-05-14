@@ -25,8 +25,9 @@
 namespace rm_auto_aim
 {
 NumberClassifier::NumberClassifier(
-  const std::string & model_path, const std::string & label_path, const double thre)
-: threshold(thre)
+  const std::string & model_path, const std::string & label_path, const double thre,
+  const std::vector<std::string> & ignore_classes)
+: threshold(thre), ignore_classes_(ignore_classes)
 {
   net_ = cv::dnn::readNetFromONNX(model_path);
 
@@ -56,7 +57,7 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
 
     const int top_light_y = (warp_height - light_length) / 2 - 1;
     const int bottom_light_y = top_light_y + light_length;
-    const int warp_width = armor.armor_type == SMALL ? small_armor_width : large_armor_width;
+    const int warp_width = armor.type == ArmorType::SMALL ? small_armor_width : large_armor_width;
     cv::Point2f target_vertices[4] = {
       cv::Point(0, bottom_light_y),
       cv::Point(0, top_light_y),
@@ -72,7 +73,7 @@ void NumberClassifier::extractNumbers(const cv::Mat & src, std::vector<Armor> & 
       number_image(cv::Rect(cv::Point((warp_width - roi_size.width) / 2, 0), roi_size));
 
     // number_image 下半部分设置为0
-    number_image(cv::Rect(cv::Point(0, 23), cv::Point(roi_size))) = 0;
+    number_image(cv::Rect(cv::Point(0, 26), cv::Point(roi_size))) = 0;
 
     // Binarize
     cv::cvtColor(number_image, number_image, cv::COLOR_RGB2GRAY);
@@ -92,7 +93,7 @@ void NumberClassifier::classify(std::vector<Armor> & armors)
 
     // Create blob from image
     cv::Mat blob;
-    cv::dnn::blobFromImage(image, blob, 1., cv::Size(28, 20));
+    cv::dnn::blobFromImage(image, blob);
 
     // Set the input blob for the neural network
     net_.setInput(blob);
@@ -116,28 +117,30 @@ void NumberClassifier::classify(std::vector<Armor> & armors)
 
     std::stringstream result_ss;
     result_ss << armor.number << ": " << std::fixed << std::setprecision(1)
-              << armor.confidence * 100.0 << "% | " << ((armor.armor_type == LARGE));
+              << armor.confidence * 100.0 << "%";
     armor.classfication_result = result_ss.str();
   }
-
-  // return ;
 
   armors.erase(
     std::remove_if(
       armors.begin(), armors.end(),
-      [this](Armor & armor) {
-        if (armor.confidence < threshold || armor.number == "Negative") {
+      [this](const Armor & armor) {
+        if (armor.confidence < threshold) {
           return true;
         }
 
+        for (const auto & ignore_class : ignore_classes_) {
+          if (armor.number == ignore_class) {
+            return true;
+          }
+        }
+
         bool mismatch_armor_type = false;
-        if (armor.armor_type == LARGE) {
+        if (armor.type == ArmorType::LARGE) {
           mismatch_armor_type =
             armor.number == "Outpost" || armor.number == "2" || armor.number == "Guard";
-        } else if (armor.armor_type == SMALL) {
-          // mismatch_armor_type = armor.number == "1" || armor.number == "Base";
-          if(armor.number == "1" || armor.number == "Base")
-            armor.armor_type = LARGE;
+        } else if (armor.type == ArmorType::SMALL) {
+          mismatch_armor_type = armor.number == "1" || armor.number == "Base";
         }
         return mismatch_armor_type;
       }),

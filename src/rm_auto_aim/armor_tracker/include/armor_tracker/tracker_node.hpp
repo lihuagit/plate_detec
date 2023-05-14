@@ -19,17 +19,18 @@
 #include <string>
 #include <vector>
 
-#include "armor_processor/tracker.hpp"
+#include "armor_tracker/tracker.hpp"
 #include "auto_aim_interfaces/msg/armors.hpp"
+#include "auto_aim_interfaces/msg/measurement.hpp"
 #include "auto_aim_interfaces/msg/target.hpp"
 
 namespace rm_auto_aim
 {
 using tf2_filter = tf2_ros::MessageFilter<auto_aim_interfaces::msg::Armors>;
-class ArmorProcessorNode : public rclcpp::Node
+class ArmorTrackerNode : public rclcpp::Node
 {
 public:
-  explicit ArmorProcessorNode(const rclcpp::NodeOptions & options);
+  explicit ArmorTrackerNode(const rclcpp::NodeOptions & options);
 
 private:
   void armorsCallback(const auto_aim_interfaces::msg::Armors::SharedPtr armors_ptr);
@@ -41,6 +42,9 @@ private:
   double dt_;
 
   // Armor tracker
+  double s2qxyz_, s2qyaw_, s2qr_;
+  double r_xyz_factor, r_yaw;
+  double lost_time_thres_;
   std::unique_ptr<Tracker> tracker_;
 
   // Subscriber with tf2 message_filter
@@ -49,6 +53,9 @@ private:
   std::shared_ptr<tf2_ros::TransformListener> tf2_listener_;
   message_filters::Subscriber<auto_aim_interfaces::msg::Armors> armors_sub_;
   std::shared_ptr<tf2_filter> tf2_filter_;
+
+  // Measurement publisher
+  rclcpp::Publisher<auto_aim_interfaces::msg::Measurement>::SharedPtr measure_pub_;
 
   // Publisher
   rclcpp::Publisher<auto_aim_interfaces::msg::Target>::SharedPtr target_pub_;

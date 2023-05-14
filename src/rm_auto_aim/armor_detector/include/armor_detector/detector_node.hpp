@@ -34,18 +34,18 @@ public:
   ArmorDetectorNode(const rclcpp::NodeOptions & options);
 
 private:
+  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr img_msg);
+
+  std::unique_ptr<Detector> initDetector();
   std::vector<Armor> detectArmors(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
+
+  void createDebugPublishers();
+  void destroyDebugPublishers();
 
   void publishMarkers();
 
-  // Camera info subscription
-  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr cam_info_sub_;
-
-  // Camera info
-  std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
-
-  // Camera center
-  cv::Point2f cam_center_;
+  // Armor Detector
+  std::unique_ptr<Detector> detector_;
 
   // Detected armors publisher
   auto_aim_interfaces::msg::Armors armors_msg_;
@@ -57,24 +57,21 @@ private:
   visualization_msgs::msg::MarkerArray marker_array_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
 
-  std::unique_ptr<Detector> initDetector();
+  // Camera info part
+  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr cam_info_sub_;
+  cv::Point2f cam_center_;
+  std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
 
-  std::shared_ptr<image_transport::Subscriber> img_sub_;
-  // rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr img_sub_;
-  void imageCallback(const sensor_msgs::msg::Image::ConstSharedPtr & img_msg);
-
+  
   // targer color subscription
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr targer_color_sub_;
 
   std::unique_ptr<PnPSolver> pnp_solver_;
 
-  void createDebugPublishers();
-  void destroyDebugPublishers();
+  // Image subscrpition
+  std::shared_ptr<image_transport::Subscriber> img_sub_;
 
-  // Armor Detector
-  std::unique_ptr<Detector> detector_;
-
-  // Debug information publishers
+  // Debug information
   bool debug_;
   std::shared_ptr<rclcpp::ParameterEventHandler> debug_param_sub_;
   std::shared_ptr<rclcpp::ParameterCallbackHandle> debug_cb_handle_;

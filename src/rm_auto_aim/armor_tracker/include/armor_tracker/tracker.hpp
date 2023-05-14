@@ -13,17 +13,21 @@
 
 // STD
 #include <memory>
+#include <string>
 
-#include "armor_processor/extended_kalman_filter.hpp"
+#include "armor_tracker/extended_kalman_filter.hpp"
 #include "auto_aim_interfaces/msg/armors.hpp"
 #include "auto_aim_interfaces/msg/target.hpp"
 
 namespace rm_auto_aim
 {
+
+enum class ArmorsNum { NORMAL_4 = 4, BALANCE_2 = 2, OUTPOST_3 = 3 };
+
 class Tracker
 {
 public:
-  Tracker(double max_match_distance, int tracking_threshold, int lost_threshold);
+  Tracker(double max_match_distance);
 
   using Armors = auto_aim_interfaces::msg::Armors;
   using Armor = auto_aim_interfaces::msg::Armor;
@@ -41,12 +45,17 @@ public:
 
   ExtendedKalmanFilter ekf;
 
+  int tracking_thres;  // frame
+  double lost_thres;   // second
+
   Armor tracked_armor;
   std::string tracked_id;
+  ArmorsNum tracked_armors_num;
+  Eigen::VectorXd measurement;
   Eigen::VectorXd target_state;
 
   // To store another pair of armors message
-  double last_z, last_r;
+  double dz, another_r;
 
 private:
   void initEKF(const Armor & a);
@@ -58,9 +67,6 @@ private:
   Eigen::Vector3d getArmorPositionFromState(const Eigen::VectorXd & x);
 
   double max_match_distance_;
-
-  int tracking_threshold_;
-  int lost_threshold_;
 
   int detect_count_;
   int lost_count_;
