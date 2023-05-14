@@ -30,7 +30,7 @@ def generate_launch_description():
     with open(params_file, 'r') as f:
         detector_params = yaml.safe_load(f)['/armor_detector']['ros__parameters']
     with open(params_file, 'r') as f:
-        processor_params = yaml.safe_load(f)['/armor_processor']['ros__parameters']
+        processor_params = yaml.safe_load(f)['/armor_tracker']['ros__parameters']
     with open(params_file, 'r') as f:
         serial_params = yaml.safe_load(f)['/lc_serial_driver']['ros__parameters']
     with open(params_file, 'r') as f:
@@ -85,13 +85,13 @@ def generate_launch_description():
         output='screen',
     )
     
-    processor_node = Node(
-        package='armor_processor',
-        executable='armor_processor_node',
+    tracker_node = Node(
+        package='armor_tracker',
+        executable='armor_tracker_node',
         output='screen',
         emulate_tty=True,
         parameters=[processor_params],
-        arguments=['--ros-args', '--log-level', 'armor_processor:=INFO'],
+        arguments=['--ros-args', '--log-level', 'armor_tracker:=INFO'],
     )
     
     serial_node = Node(
@@ -101,7 +101,8 @@ def generate_launch_description():
         output='screen',
         emulate_tty=True,
         parameters=[serial_params],
-        condition=IfCondition(use_serial)
+        # condition=IfCondition(use_serial),
+        arguments=['--ros-args', '--log-level', 'lc_serial:=DEBUG'],
     )
     
     robot_state_publisher = Node(
@@ -115,7 +116,7 @@ def generate_launch_description():
         package='joint_state_publisher',
         executable='joint_state_publisher',
         parameters=[{'rate': 600}],
-        condition=IfCondition(PythonExpression(["not ", use_serial]))
+        # condition=IfCondition(PythonExpression(["not ", use_serial]))
     )
 
     return LaunchDescription([
@@ -123,7 +124,7 @@ def generate_launch_description():
         
         # mv_camera_detector_container,
         video_detector_container,
-        processor_node,
+        tracker_node,
         serial_node,
         robot_state_publisher,
         joint_state_publisher,
