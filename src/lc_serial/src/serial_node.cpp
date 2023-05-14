@@ -75,7 +75,7 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
 
   // Create Subscription
   target_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
-      "/processor/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::sendData, this, std::placeholders::_1));
+      "/tracker/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::sendData, this, std::placeholders::_1));
 
 }
 
@@ -131,19 +131,19 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
       return;
     }
 
-    // 解算数据
     double yaw = msg->yaw, r1 = msg->radius_1, r2 = msg->radius_2;
-    double xc = msg->position.x, yc = msg->position.y, zc = msg->position.z;
-    double z2 = msg->z_2;
-    double vxc = msg->velocity.x, vyc = msg->velocity.y, vzc = msg->velocity.z;
+    double xc = msg->position.x, yc = msg->position.y, za = msg->position.z;
+    double zc = za + za / 2;
+    double vx = msg->velocity.x, vy = msg->velocity.y, vz = msg->velocity.z;
+    double dz = msg->dz;
     double v_yaw = msg->v_yaw;
+    size_t a_n = msg->armors_num;
 
     z_gain = get_parameter("z_gain").as_double();
     y_gain = get_parameter("y_gain").as_double();
     x_gain = get_parameter("x_gain").as_double();
 
-    zc += z_gain;
-    z2 += z_gain;
+    za += z_gain;
     yc += y_gain;
     xc += x_gain;
 
@@ -152,13 +152,13 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
     geometry_msgs::msg::Point point_c;
     point_c.x = xc;
     point_c.y = yc;
-    point_c.z = (zc + z2) / 2;
+    point_c.z = za + dz / 2;
 
     // 整车速度
     geometry_msgs::msg::Point velocity_c;
-    velocity_c.x = vxc;
-    velocity_c.y = vyc;
-    velocity_c.z = vzc;
+    velocity_c.x = vx;
+    velocity_c.y = vy;
+    velocity_c.z = vz;
 
     // 整车角速度
     geometry_msgs::msg::Point angular_v_c;
@@ -168,19 +168,25 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
     // angular_v_c.z = v_yaw / M_PI;
     angular_v_c.z = v_yaw;
 
-    // 装甲板坐标，四块装甲板
+    //装甲板坐标
+    bool is_current_pair = true;
     std::vector<geometry_msgs::msg::Point> points_a;
-    bool use_1 = true;
-    for (size_t i = 0; i < 4; i++)
-    {
-      double tmp_yaw = yaw + i * M_PI_2;
-      double r = use_1 ? r1 : r2;
-      geometry_msgs::msg::Point point_a;
-      point_a.x = xc - r * cos(tmp_yaw);
-      point_a.y = yc - r * sin(tmp_yaw);
-      point_a.z = use_1 ? zc : z2;
-      points_a.push_back(point_a);
-      use_1 = !use_1;
+    geometry_msgs::msg::Point p_a;
+    double r = 0;
+    for (size_t i = 0; i < a_n; i++) {
+      double tmp_yaw = yaw + i * (2 * M_PI / a_n);
+      // Only 4 armors has 2 radius and height
+      if (a_n == 4) {
+        r = is_current_pair ? r1 : r2;
+        p_a.z = za + (is_current_pair ? 0 : dz);
+        is_current_pair = !is_current_pair;
+      } else {
+        r = r1;
+        p_a.z = za;
+      }
+      p_a.x = xc - r * cos(tmp_yaw);
+      p_a.y = yc - r * sin(tmp_yaw);
+      points_a.push_back(p_a);
     }
 
     // 子弹飞行速度为 15m/s, 发单延迟为 0.1s
@@ -201,20 +207,25 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
     // TODO: 角度预测时间要短些
     delay = shoot_delay_spin_ + sqrt(xc*xc + yc*yc + zc*zc) / shoot_speed_;
     double yaw_pre = yaw + angular_v_c.z * delay;
-
-    // 装甲板预测坐标
+    
+    //装甲板坐标
+    is_current_pair = true;
     std::vector<geometry_msgs::msg::Point> points_a_pre;
-    use_1 = true;
-    for (size_t i = 0; i < 4; i++)
-    {
-      double tmp_yaw = yaw_pre + i * M_PI_2;
-      double r = use_1 ? r1 : r2;
-      geometry_msgs::msg::Point point_a;
-      point_a.x = point_c_pre.x - r * cos(tmp_yaw);
-      point_a.y = point_c_pre.y - r * sin(tmp_yaw);
-      point_a.z = use_1 ? zc : z2;
-      points_a_pre.push_back(point_a);
-      use_1 = !use_1;
+    r = 0;
+    for (size_t i = 0; i < a_n; i++) {
+      double tmp_yaw = yaw_pre + i * (2 * M_PI / a_n);
+      // Only 4 armors has 2 radius and height
+      if (a_n == 4) {
+        r = is_current_pair ? r1 : r2;
+        p_a.z = za + (is_current_pair ? 0 : dz);
+        is_current_pair = !is_current_pair;
+      } else {
+        r = r1;
+        p_a.z = za;
+      }
+      p_a.x = xc - r * cos(tmp_yaw);
+      p_a.y = yc - r * sin(tmp_yaw);
+      points_a_pre.push_back(p_a);
     }
 
     // 匹配最优装甲板，面朝摄像头为最优，通过yaw_pre来判断
@@ -236,7 +247,7 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
 
     int index = 0;
     double min = 1000;
-    for (size_t i = 0; i < 4; i++)
+    for (size_t i = 0; i < a_n; i++)
     {
       double x_p = points_a[i].x;
       double y_p = points_a[i].y;
@@ -276,14 +287,14 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
       coord_solver_->bullet_speed = shoot_speed_;
       Eigen::Vector3d xyz(x, y, z);
       double send_pitch_gain = coord_solver_->dynamicCalcPitchOffset(xyz);
-      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch_gain 111:%lf", send_pitch_gain);
+      // RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch_gain 111:%lf", send_pitch_gain);
       send_pitch_gain = send_pitch_gain * M_PI / 180.0;
-      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch_gain 222:%lf", send_pitch_gain);
+      // RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch_gain 222:%lf", send_pitch_gain);
       send_pitch_gain *= xyz.norm() * pitch_gain_;
-      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch:%lf", send_pitch);
-      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "pitch_gain_:%lf", pitch_gain_);
-      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "xyz.norm():%lf", xyz.norm());
-      RCLCPP_INFO(rclcpp::get_logger("lc_serial"), "send_pitch_gain:%lf", send_pitch_gain);
+      // RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch:%lf", send_pitch);
+      // RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "pitch_gain_:%lf", pitch_gain_);
+      // RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "xyz.norm():%lf", xyz.norm());
+      // RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "send_pitch_gain:%lf", send_pitch_gain);
       // RCLCPP_DEBUG(rclcpp::get_logger(), "x:%lf", x);
       // RCLCPP_DEBUG(rclcpp::get_logger(), "y:%lf", y);
       // RCLCPP_DEBUG(rclcpp::get_logger(), "z:%lf", z);
