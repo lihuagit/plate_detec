@@ -1,7 +1,7 @@
 from launch_ros.descriptions import ComposableNode
 from launch_ros.actions import ComposableNodeContainer, Node 
 
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, TimerAction
 from launch.substitutions import Command, PythonExpression, LaunchConfiguration
 from launch.conditions import IfCondition
 from launch import LaunchDescription
@@ -119,13 +119,25 @@ def generate_launch_description():
         # condition=IfCondition(PythonExpression(["not ", use_serial]))
     )
 
+    delay_serial_node = TimerAction(
+        period=1.0,
+        actions=[serial_node],
+    )
+
+    delay_tracker_node = TimerAction(
+        period=1.5,
+        actions=[tracker_node],
+    )
+
+
     return LaunchDescription([
         declare_use_serial_cmd,
         
         # mv_camera_detector_container,
         video_detector_container,
-        tracker_node,
-        serial_node,
         robot_state_publisher,
         joint_state_publisher,
+
+        delay_serial_node,
+        delay_tracker_node,
     ])

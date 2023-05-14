@@ -51,20 +51,20 @@ private:
   std::unique_ptr<CoordSolver> coord_solver_;
 
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_state_pub_;
-  // target_color pub
-  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr target_color_pub_;
 
   std::unique_ptr<IoContext> owned_ctx_;
   std::string device_name_;
   std::unique_ptr<drivers::serial_driver::SerialPortConfig> device_config_;
   std::unique_ptr<drivers::serial_driver::SerialDriver> serial_driver_;
 
-  rclcpp::Subscription<auto_aim_interfaces::msg::Target>::SharedPtr target_sub_;
+  
+  void setParam(const rclcpp::Parameter & param);
+  bool initial_set_param_ = false;
+  uint8_t previous_receive_color_ = 0;
+  rclcpp::AsyncParametersClient::SharedPtr detector_param_client_;
   
 
   std::thread receive_thread_;
-
-  int target_color;
 
   double shoot_speed_;
   double shoot_delay_;

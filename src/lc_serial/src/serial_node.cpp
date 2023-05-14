@@ -40,11 +40,6 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   // Create Publisher
   joint_state_pub_ =
       this->create_publisher<sensor_msgs::msg::JointState>("/joint_states", rclcpp::QoS(rclcpp::KeepLast(1)));
-  
-  target_color_pub_ =
-      this->create_publisher<std_msgs::msg::String>("/target_color", rclcpp::QoS(rclcpp::KeepLast(1)));
-
-  target_color = -1;
 
   try
   {
@@ -73,9 +68,9 @@ SerialDriver::SerialDriver(const rclcpp::NodeOptions& options)
   marker_pub_ =
     this->create_publisher<visualization_msgs::msg::MarkerArray>("/lc_serial/marker", 10);
 
-  // Create Subscription
-  target_sub_ = this->create_subscription<auto_aim_interfaces::msg::Target>(
-      "/tracker/target", rclcpp::SensorDataQoS(), std::bind(&SerialDriver::sendData, this, std::placeholders::_1));
+
+  // Detect parameter client
+  detector_param_client_ = std::make_shared<rclcpp::AsyncParametersClient>(this, "armor_detector");
 
 }
 
@@ -396,20 +391,11 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
             robot_color = (int)(cJSON_GetObjectItem(dat, "robot_color")->valuedouble);
           }
         }
-
-        if(robot_color != -1 && robot_color != target_color)
-        {
-          target_color = robot_color;
-          std_msgs::msg::String color_msg;
-          if(robot_color == 0){
-            color_msg.data = "BLUE";
-            target_color_pub_->publish(color_msg);
-          }
-          else if(robot_color == 1){
-            color_msg.data = "RED";
-            target_color_pub_->publish(color_msg);
-          }
-          RCLCPP_DEBUG(rclcpp::get_logger("lc_serial"), "updata target color: %s", color_msg.data.data());
+        
+        if (!initial_set_param_ || robot_color != previous_receive_color_) {
+          RCLCPP_INFO(get_logger(), "Setting detect_color to %d...", robot_color);
+          setParam(rclcpp::Parameter("detect_color", robot_color));
+          previous_receive_color_ = robot_color;
         }
 
         // 收到电控数据
@@ -465,120 +451,142 @@ void SerialDriver::sendData(auto_aim_interfaces::msg::Target::SharedPtr msg)
     }
   }
 
-  void SerialDriver::getParams()
+void SerialDriver::getParams()
+{
+  using FlowControl = drivers::serial_driver::FlowControl;
+  using Parity = drivers::serial_driver::Parity;
+  using StopBits = drivers::serial_driver::StopBits;
+
+  uint32_t baud_rate{};
+  auto fc = FlowControl::NONE;
+  auto pt = Parity::NONE;
+  auto sb = StopBits::ONE;
+
+  try
   {
-    using FlowControl = drivers::serial_driver::FlowControl;
-    using Parity = drivers::serial_driver::Parity;
-    using StopBits = drivers::serial_driver::StopBits;
-
-    uint32_t baud_rate{};
-    auto fc = FlowControl::NONE;
-    auto pt = Parity::NONE;
-    auto sb = StopBits::ONE;
-
-    try
-    {
-      device_name_ = declare_parameter<std::string>("device_name", "/dev/ttyACM0");
-    }
-    catch (rclcpp::ParameterTypeException& ex)
-    {
-      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The device name provided was invalid");
-      throw ex;
-    }
-
-    try
-    {
-      baud_rate = declare_parameter<int>("baud_rate", 0);
-    }
-    catch (rclcpp::ParameterTypeException& ex)
-    {
-      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The baud_rate provided was invalid");
-      throw ex;
-    }
-
-    try
-    {
-      const auto fc_string = declare_parameter<std::string>("flow_control", "none");
-
-      if (fc_string == "none")
-      {
-        fc = FlowControl::NONE;
-      }
-      else if (fc_string == "hardware")
-      {
-        fc = FlowControl::HARDWARE;
-      }
-      else if (fc_string == "software")
-      {
-        fc = FlowControl::SOFTWARE;
-      }
-      else
-      {
-        throw std::invalid_argument{ "The flow_control parameter must be one of: none, software, or hardware." };
-      }
-    }
-    catch (rclcpp::ParameterTypeException& ex)
-    {
-      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The flow_control provided was invalid");
-      throw ex;
-    }
-
-    try
-    {
-      const auto pt_string = declare_parameter<std::string>("parity", "none");
-
-      if (pt_string == "none")
-      {
-        pt = Parity::NONE;
-      }
-      else if (pt_string == "odd")
-      {
-        pt = Parity::ODD;
-      }
-      else if (pt_string == "even")
-      {
-        pt = Parity::EVEN;
-      }
-      else
-      {
-        throw std::invalid_argument{ "The parity parameter must be one of: none, odd, or even." };
-      }
-    }
-    catch (rclcpp::ParameterTypeException& ex)
-    {
-      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The parity provided was invalid");
-      throw ex;
-    }
-
-    try
-    {
-      const auto sb_string = declare_parameter<std::string>("stop_bits", "1");
-
-      if (sb_string == "1" || sb_string == "1.0")
-      {
-        sb = StopBits::ONE;
-      }
-      else if (sb_string == "1.5")
-      {
-        sb = StopBits::ONE_POINT_FIVE;
-      }
-      else if (sb_string == "2" || sb_string == "2.0")
-      {
-        sb = StopBits::TWO;
-      }
-      else
-      {
-        throw std::invalid_argument{ "The stop_bits parameter must be one of: 1, 1.5, or 2." };
-      }
-    }
-    catch (rclcpp::ParameterTypeException& ex)
-    {
-      RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The stop_bits provided was invalid");
-      throw ex;
-    }
-
-    device_config_ = std::make_unique<drivers::serial_driver::SerialPortConfig>(baud_rate, fc, pt, sb);
+    device_name_ = declare_parameter<std::string>("device_name", "/dev/ttyACM0");
   }
+  catch (rclcpp::ParameterTypeException& ex)
+  {
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The device name provided was invalid");
+    throw ex;
+  }
+
+  try
+  {
+    baud_rate = declare_parameter<int>("baud_rate", 0);
+  }
+  catch (rclcpp::ParameterTypeException& ex)
+  {
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The baud_rate provided was invalid");
+    throw ex;
+  }
+
+  try
+  {
+    const auto fc_string = declare_parameter<std::string>("flow_control", "none");
+
+    if (fc_string == "none")
+    {
+      fc = FlowControl::NONE;
+    }
+    else if (fc_string == "hardware")
+    {
+      fc = FlowControl::HARDWARE;
+    }
+    else if (fc_string == "software")
+    {
+      fc = FlowControl::SOFTWARE;
+    }
+    else
+    {
+      throw std::invalid_argument{ "The flow_control parameter must be one of: none, software, or hardware." };
+    }
+  }
+  catch (rclcpp::ParameterTypeException& ex)
+  {
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The flow_control provided was invalid");
+    throw ex;
+  }
+
+  try
+  {
+    const auto pt_string = declare_parameter<std::string>("parity", "none");
+
+    if (pt_string == "none")
+    {
+      pt = Parity::NONE;
+    }
+    else if (pt_string == "odd")
+    {
+      pt = Parity::ODD;
+    }
+    else if (pt_string == "even")
+    {
+      pt = Parity::EVEN;
+    }
+    else
+    {
+      throw std::invalid_argument{ "The parity parameter must be one of: none, odd, or even." };
+    }
+  }
+  catch (rclcpp::ParameterTypeException& ex)
+  {
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The parity provided was invalid");
+    throw ex;
+  }
+
+  try
+  {
+    const auto sb_string = declare_parameter<std::string>("stop_bits", "1");
+
+    if (sb_string == "1" || sb_string == "1.0")
+    {
+      sb = StopBits::ONE;
+    }
+    else if (sb_string == "1.5")
+    {
+      sb = StopBits::ONE_POINT_FIVE;
+    }
+    else if (sb_string == "2" || sb_string == "2.0")
+    {
+      sb = StopBits::TWO;
+    }
+    else
+    {
+      throw std::invalid_argument{ "The stop_bits parameter must be one of: 1, 1.5, or 2." };
+    }
+  }
+  catch (rclcpp::ParameterTypeException& ex)
+  {
+    RCLCPP_ERROR(rclcpp::get_logger("lc_serial"), "The stop_bits provided was invalid");
+    throw ex;
+  }
+
+  device_config_ = std::make_unique<drivers::serial_driver::SerialPortConfig>(baud_rate, fc, pt, sb);
+}
+
+
+void SerialDriver::setParam(const rclcpp::Parameter & param)
+{
+  if (detector_param_client_->service_is_ready()) {
+    detector_param_client_->set_parameters(
+      {param},
+      [this, param](
+        const std::shared_future<std::vector<rcl_interfaces::msg::SetParametersResult>> & results) {
+        for (const auto & result : results.get()) {
+          if (!result.successful) {
+            RCLCPP_ERROR(get_logger(), "Failed to set parameter: %s", result.reason.c_str());
+            return;
+          }
+        }
+        RCLCPP_INFO(get_logger(), "Successfully set detect_color to %ld!", param.as_int());
+        initial_set_param_ = true;
+      });
+  } else {
+    RCLCPP_WARN(get_logger(), "Service not ready, skipping parameter set");
+  }
+}
 
 #include "rclcpp_components/register_node_macro.hpp"
 

@@ -62,10 +62,6 @@ private:
   cv::Point2f cam_center_;
   std::shared_ptr<sensor_msgs::msg::CameraInfo> cam_info_;
 
-  
-  // targer color subscription
-  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr targer_color_sub_;
-
   std::unique_ptr<PnPSolver> pnp_solver_;
 
   // Image subscrpition

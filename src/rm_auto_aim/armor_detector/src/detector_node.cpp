@@ -102,18 +102,6 @@ ArmorDetectorNode::ArmorDetectorNode(const rclcpp::NodeOptions & options)
       cv::Size(save_video_width, save_video_height), true);
   }
 
-  targer_color_sub_ = this->create_subscription<std_msgs::msg::String>(
-    "/target_color", rclcpp::SensorDataQoS(),
-    [this](std_msgs::msg::String::ConstSharedPtr target_color) {
-      if(target_color->data == "BLUE" || target_color->data == "blue"){
-        set_parameter(rclcpp::Parameter("detect_color", 0));
-      }else if(target_color->data == "RED" || target_color->data == "red"){
-        set_parameter(rclcpp::Parameter("detect_color", 1));
-      }else{
-        RCLCPP_WARN(this->get_logger(), "Invalid color!");
-      }
-    });
-
   // img_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
   //   "/image_raw", rclcpp::SensorDataQoS(),
   //   std::bind(&ArmorDetectorNode::imageCallback, this, std::placeholders::_1));
