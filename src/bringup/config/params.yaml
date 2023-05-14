@@ -16,30 +16,50 @@
 /armor_detector:
   ros__parameters:
     debug: true
+
     detect_color: 1
-    min_lightness: 140
-    classifier_threshold: 0.7
+    binary_thres: 140
+
+    classifier_threshold: 0.6
+    ignore_classes: ["negative"]
 
     is_record: false
     save_video_path: armor.avi
-    save_video_fps: 30
-    save_video_width: 640
-    save_video_height: 480
-
+    save_video_fps: 100
+    save_video_width: 1280
+    save_video_height: 1024
+    
     light:
       max_angle: 40.0
-      max_ratio: 0.6
+      max_ratio: 0.8
       min_ratio: 0.05
 
-    armor:
-      max_angle: 35.0
-      max_center_ratio: 1.6
-      min_center_ratio: 0.4
-      min_light_ratio: 0.6
-      max_large_center_distance: 5.0
-      min_large_center_distance: 2.8
-      max_small_center_distance: 2.8
-      min_small_center_distance: 0.8
+    # armor:
+    #   max_angle: 35.0
+    #   max_center_ratio: 1.6
+    #   min_center_ratio: 0.4
+    #   min_light_ratio: 0.6
+    #   max_large_center_distance: 5.0
+    #   min_large_center_distance: 2.8
+    #   max_small_center_distance: 2.8
+    #   min_small_center_distance: 0.8
+
+/armor_tracker:
+  ros__parameters:
+    target_frame: shooter_link
+
+    ekf:
+      sigma2_q_xyz: 5e-2
+      sigma2_q_yaw: 1e1
+      sigma2_q_r: 80.0
+
+      r_xyz_factor: 2e-4
+      r_yaw: 5e-3
+
+    tracker:
+      max_match_distance: 0.15
+      tracking_thres: 3
+      lost_time_thres: 0.6
 
 /trt_armor_detector:
   ros__parameters:
@@ -51,22 +71,6 @@
     detect_color: 0
     prob_threshold: 0.25 
     nms_threshold: 0.45
-
-/armor_processor:
-  ros__parameters:
-    target_frame: shooter_link
-
-    ekf:
-      #   xc    yc    zc    yaw   vxc   vyc   vzc   vyaw  r
-      q: [1e-2, 1e-2, 1e-2, 2e-2, 5e-2, 5e-2, 1e-4, 4e-2, 1e-3]
-      #   xa    ya    za    yaw
-      r: [1e-1, 1e-1, 1e-1, 2e-1]
-
-    tracker:
-      max_match_distance: 0.2
-      tracking_threshold: 5
-      lost_threshold: 25
-
 
 /lc_serial_driver:
   ros__parameters:
@@ -101,5 +105,5 @@
 /video_pub:
   ros__parameters:
     fps: 100
-    # video_path: red_1_5m.avi
-    video_path: armor.avi
+    video_path: red_1_5m.avi
+    # video_path: armor.avi
