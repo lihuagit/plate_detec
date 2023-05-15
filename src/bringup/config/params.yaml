@@ -79,20 +79,20 @@
     flow_control: none
     parity: none
     stop_bits: "1"
-
-    fps: 100
-    is_try: false
     
     is_pitch_gain: true
     is_track: true
     shoot_delay: 0.4
     shoot_delay_spin_: 0.2
+    gimbal_delay: 0.1
+    max_move_yaw: 70.0
+    fire_angle_threshold: 10.0
     shoot_speed: 14.4
 
     x_gain: 0.0
     y_gain: 0.0
     z_gain: 0.0
-    pitch_gain_: 0.15
+    pitch_gain_factor: 0.15
     
     
     # 龙格库塔法求解落点的迭代次数
@@ -105,5 +105,5 @@
 /video_pub:
   ros__parameters:
     fps: 100
-    video_path: red_1_5m.avi
-    # video_path: armor.avi
+    # video_path: red_1_5m.avi
+    video_path: armor.avi
